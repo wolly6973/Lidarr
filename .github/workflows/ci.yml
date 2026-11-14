@@ -116,9 +116,9 @@ jobs:
 
       - name: Diagnose Artist Index import ordering
         run: |
-          cd frontend
-          yarn eslint src/Store/Actions/artistIndexActions.js --fix
-          git diff -- src/Store/Actions/artistIndexActions.js
+          yarn install --frozen-lockfile --network-timeout 120000
+          yarn eslint --config frontend/.eslintrc.js --ignore-path frontend/.eslintignore frontend/src/Store/Actions/artistIndexActions.js --fix
+          git diff -- frontend/src/Store/Actions/artistIndexActions.js
 
       - name: Lint and build frontend
         run: ./build.sh --frontend --lint
