@@ -311,7 +311,7 @@ namespace Lidarr.Api.V1.Artist
                 "artistType" => x => x.ArtistType ?? string.Empty,
                 "qualityProfileId" => x => x.QualityProfileId,
                 "metadataProfileId" => x => x.MetadataProfileId,
-                "monitorNewItems" => x => x.MonitorNewItems,
+                "monitorNewItems" => x => x.MonitorNewItems.ToString(),
                 "nextAlbum" => x => x.NextAlbum?.ReleaseDate ?? DateTime.MinValue,
                 "lastAlbum" => x => x.LastAlbum?.ReleaseDate ?? DateTime.MinValue,
                 "added" => x => x.Added,
@@ -320,9 +320,9 @@ namespace Lidarr.Api.V1.Artist
                 "trackCount" => x => x.Statistics?.TotalTrackCount ?? 0,
                 "path" => x => x.Path ?? string.Empty,
                 "sizeOnDisk" => x => x.Statistics?.SizeOnDisk ?? 0L,
-                "genres" => x => string.Join(", ", x.Genres ?? new List<string>()),
+                "genres" => x => string.Join(", ", (x.Genres ?? new List<string>()).OrderBy(g => g, StringComparer.OrdinalIgnoreCase)),
                 "ratings" => x => x.Ratings?.Value ?? 0,
-                "tags" => x => string.Join(",", x.Tags ?? new HashSet<int>()),
+                "tags" => x => string.Join(",", (x.Tags ?? new HashSet<int>()).OrderBy(t => t)),
                 _ => x => x.SortName ?? string.Empty
             };
 
@@ -349,9 +349,9 @@ namespace Lidarr.Api.V1.Artist
                 "artistType" => x => x.ArtistType ?? string.Empty,
                 "path" => x => x.Path ?? string.Empty,
                 "ratings" => x => x.Ratings?.Value ?? 0,
-                "tags" => x => string.Join(",", x.Tags ?? new HashSet<int>()),
-                "genres" => x => string.Join(", ", x.Genres ?? new List<string>()),
-                "monitorNewItems" => x => x.MonitorNewItems,
+                "tags" => x => string.Join(",", (x.Tags ?? new HashSet<int>()).OrderBy(t => t)),
+                "genres" => x => string.Join(", ", (x.Genres ?? new List<string>()).OrderBy(g => g, StringComparer.OrdinalIgnoreCase)),
+                "monitorNewItems" => x => x.MonitorNewItems.ToString(),
                 "status" => x => (x.Monitored ? 2 : 0) + (x.Status.ToString().Equals("continuing", StringComparison.OrdinalIgnoreCase) ? 1 : 0),
                 _ => x => x.SortName ?? string.Empty
             };
