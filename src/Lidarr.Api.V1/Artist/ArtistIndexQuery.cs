@@ -164,7 +164,7 @@ namespace Lidarr.Api.V1.Artist
                 "status" => artist.Status.ToString().ToLowerInvariant(),
                 "qualityProfileId" => artist.QualityProfileId,
                 "metadataProfileId" => artist.MetadataProfileId,
-                "monitorNewItems" => artist.MonitorNewItems.ToString().ToLowerInvariant(),
+                "monitorNewItems" => JsonNamingPolicy.CamelCase.ConvertName(artist.MonitorNewItems.ToString()),
                 "nextAlbum" => artist.NextAlbum?.ReleaseDate,
                 "lastAlbum" => artist.LastAlbum?.ReleaseDate,
                 "added" => artist.Added,
@@ -352,7 +352,7 @@ namespace Lidarr.Api.V1.Artist
                 "artistType" => x => x.ArtistType ?? string.Empty,
                 "qualityProfileId" => x => x.QualityProfileId,
                 "metadataProfileId" => x => x.MetadataProfileId,
-                "monitorNewItems" => x => x.MonitorNewItems.ToString().ToLowerInvariant(),
+                "monitorNewItems" => x => JsonNamingPolicy.CamelCase.ConvertName(x.MonitorNewItems.ToString()),
                 "nextAlbum" => x => x.NextAlbum?.ReleaseDate ?? new DateTime(1000, 1, 1),
                 "lastAlbum" => x => x.LastAlbum?.ReleaseDate ?? new DateTime(1000, 1, 1),
                 "added" => x => x.Added,
@@ -392,7 +392,7 @@ namespace Lidarr.Api.V1.Artist
                 "ratings" => x => x.Ratings?.Value ?? 0,
                 "tags" => x => string.Join(",", (x.Tags ?? new HashSet<int>()).OrderBy(t => t)),
                 "genres" => x => string.Join(", ", (x.Genres ?? new List<string>()).OrderBy(g => g, StringComparer.OrdinalIgnoreCase)),
-                "monitorNewItems" => x => x.MonitorNewItems.ToString().ToLowerInvariant(),
+                "monitorNewItems" => x => JsonNamingPolicy.CamelCase.ConvertName(x.MonitorNewItems.ToString()),
                 "status" => x => (x.Monitored ? 2 : 0) + (x.Status.ToString().Equals("continuing", StringComparison.OrdinalIgnoreCase) ? 1 : 0),
                 _ => x => x.SortName ?? string.Empty
             };
