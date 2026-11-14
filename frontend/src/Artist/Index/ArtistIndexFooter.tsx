@@ -14,7 +14,7 @@ import styles from './ArtistIndexFooter.css';
 
 function createUnoptimizedSelector() {
   return createSelector(
-    createClientSideCollectionSelector('artist', 'artistIndex'),
+    createClientSideCollectionSelector('artist', 'artistIndex', true),
     (artist: ArtistAppState) => {
       return artist.items.map((s) => {
         const { monitored, status, statistics } = s;
