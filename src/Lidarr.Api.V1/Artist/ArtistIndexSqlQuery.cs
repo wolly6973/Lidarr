@@ -22,6 +22,17 @@ namespace Lidarr.Api.V1.Artist
         public long SizeOnDisk { get; set; }
     }
 
+    public sealed class ArtistIndexSqlSummary
+    {
+        public int ArtistCount { get; set; }
+        public int Ended { get; set; }
+        public int Continuing { get; set; }
+        public int Monitored { get; set; }
+        public long TrackCount { get; set; }
+        public long TrackFileCount { get; set; }
+        public long SizeOnDisk { get; set; }
+    }
+
     public sealed class ArtistIndexSqlResult
     {
         public int TotalArtistCount { get; set; }
@@ -149,21 +160,32 @@ OFFSET @offset LIMIT @limit";
 
             using var connection = database.OpenConnection();
             var rows = connection.Query<ArtistIndexSqlRow>(sql, parameters).ToList();
+            var summarySql = BaseCtes + @",
+matched AS (SELECT b.* FROM artist_base b" + where + @")
+SELECT COUNT(*)::integer AS \"ArtistCount\",
+       COUNT(*) FILTER (WHERE \"Status\" = 1)::integer AS \"Ended\",
+       COUNT(*) FILTER (WHERE \"Status\" <> 1)::integer AS \"Continuing\",
+       COUNT(*) FILTER (WHERE \"Monitored\")::integer AS \"Monitored\",
+       COALESCE(SUM(\"TrackCount\"), 0)::bigint AS \"TrackCount\",
+       COALESCE(SUM(\"TrackFileCount\"), 0)::bigint AS \"TrackFileCount\",
+       COALESCE(SUM(\"SizeOnDisk\"), 0)::bigint AS \"SizeOnDisk\"
+FROM matched";
+            var summary = connection.QuerySingle<ArtistIndexSqlSummary>(summarySql, parameters);
             var result = new ArtistIndexSqlResult
             {
                 TotalArtistCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM \"Artists\""),
-                TotalRecords = rows.Count == 0 ? 0 : checked((int)rows[0].TotalMatches),
+                TotalRecords = summary.ArtistCount,
                 PageIds = rows.Select(x => x.Id).ToList(),
                 MatchingArtists = new List<ArtistIndexMatchingArtistResource>(),
-                Summary = rows.Count == 0 ? new ArtistIndexSummaryResource() : new ArtistIndexSummaryResource
+                Summary = new ArtistIndexSummaryResource
                 {
-                    ArtistCount = rows[0].ArtistCount,
-                    Ended = rows[0].Ended,
-                    Continuing = rows[0].Continuing,
-                    Monitored = rows[0].Monitored,
-                    TrackCount = checked((int)rows[0].TrackCount),
-                    TrackFileCount = checked((int)rows[0].TrackFileCount),
-                    SizeOnDisk = rows[0].SizeOnDisk
+                    ArtistCount = summary.ArtistCount,
+                    Ended = summary.Ended,
+                    Continuing = summary.Continuing,
+                    Monitored = summary.Monitored,
+                    TrackCount = checked((int)summary.TrackCount),
+                    TrackFileCount = checked((int)summary.TrackFileCount),
+                    SizeOnDisk = summary.SizeOnDisk
                 }
             };
 
