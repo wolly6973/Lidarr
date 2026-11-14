@@ -13,6 +13,7 @@ function createArtistIndexPagedItemsSelector() {
         ...artistIndex,
         customFilters,
         totalItems: artistIndex.totalRecords || 0,
+        selectableItems: (artistIndex.matchingIds || []).map((id) => ({ id })),
         items: (artistIndex.items || []).map((artist) => ({
           id: artist.id,
           sortName: artist.sortName
