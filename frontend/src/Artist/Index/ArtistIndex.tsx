@@ -237,21 +237,24 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
       };
     }
 
-    const characters = filteredItems.reduce((acc: Record<string, number>, item) => {
-      let char = item.sortName.charAt(0);
+    const characters = filteredItems.reduce(
+      (acc: Record<string, number>, item) => {
+        let char = item.sortName.charAt(0);
 
-      if (!isNaN(Number(char))) {
-        char = '#';
-      }
+        if (!isNaN(Number(char))) {
+          char = '#';
+        }
 
-      if (char in acc) {
-        acc[char] = acc[char] + 1;
-      } else {
-        acc[char] = 1;
-      }
+        if (char in acc) {
+          acc[char] = acc[char] + 1;
+        } else {
+          acc[char] = 1;
+        }
 
-      return acc;
-    }, {});
+        return acc;
+      },
+      {}
+    );
 
     const order = Object.keys(characters).sort();
 
