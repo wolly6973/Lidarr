@@ -114,6 +114,12 @@ jobs:
           corepack prepare yarn@1.22.19 --activate
           yarn --version
 
+      - name: Diagnose Artist Index import ordering
+        run: |
+          cd frontend
+          yarn eslint src/Store/Actions/artistIndexActions.js --fix
+          git diff -- src/Store/Actions/artistIndexActions.js
+
       - name: Lint and build frontend
         run: ./build.sh --frontend --lint
 
