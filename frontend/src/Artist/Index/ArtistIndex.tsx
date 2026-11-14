@@ -110,7 +110,9 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
   const { isSmallScreen } = useSelector(createDimensionsSelector());
   const dispatch = useDispatch();
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const pendingJumpToCharacter = useRef<string | undefined>(undefined);
+  const pendingJumpToCharacter = useRef<
+    { character: string; page: number } | undefined
+  >(undefined);
   const [isOptionsModalOpen, setIsOptionsModalOpen] = useState(false);
   const [jumpToCharacter, setJumpToCharacter] = useState<string | undefined>(
     undefined
@@ -194,7 +196,7 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
       const targetPage = Math.floor(index / pageSize) + 1;
 
       if (targetPage !== page) {
-        pendingJumpToCharacter.current = character;
+        pendingJumpToCharacter.current = { character, page: targetPage };
         dispatch(fetchArtistIndex({ page: targetPage }));
         return;
       }
@@ -205,11 +207,16 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
   );
 
   useEffect(() => {
-    if (pendingJumpToCharacter.current && items.length) {
-      setJumpToCharacter(pendingJumpToCharacter.current);
+    if (
+      pendingJumpToCharacter.current &&
+      !isFetching &&
+      page === pendingJumpToCharacter.current.page &&
+      items.length
+    ) {
+      setJumpToCharacter(pendingJumpToCharacter.current.character);
       pendingJumpToCharacter.current = undefined;
     }
-  }, [page, items]);
+  }, [page, items, isFetching]);
 
   const onScroll = useCallback(
     ({ scrollTop }: { scrollTop: number }) => {
