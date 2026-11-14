@@ -40,6 +40,7 @@ namespace Lidarr.Api.V1.Artist
                                 IHandle<MediaCoversUpdatedEvent>
     {
         private readonly IArtistService _artistService;
+        private readonly IMainDatabase _mainDatabase;
         private readonly IAlbumService _albumService;
         private readonly IAddArtistService _addArtistService;
         private readonly IArtistStatisticsService _artistStatisticsService;
@@ -49,6 +50,7 @@ namespace Lidarr.Api.V1.Artist
 
         public ArtistController(IBroadcastSignalRMessage signalRBroadcaster,
                             IArtistService artistService,
+                            IMainDatabase mainDatabase,
                             IAlbumService albumService,
                             IAddArtistService addArtistService,
                             IArtistStatisticsService artistStatisticsService,
@@ -69,6 +71,7 @@ namespace Lidarr.Api.V1.Artist
             : base(signalRBroadcaster)
         {
             _artistService = artistService;
+            _mainDatabase = mainDatabase;
             _albumService = albumService;
             _addArtistService = addArtistService;
             _artistStatisticsService = artistStatisticsService;
@@ -159,19 +162,32 @@ namespace Lidarr.Api.V1.Artist
         [Produces("application/json")]
         public ArtistIndexPagingResource GetPagedArtists([FromQuery] ArtistIndexPagingRequestResource paging)
         {
-            var pagingResource = new PagingResource<ArtistResource>(paging);
-            var artists = _artistService.GetAllArtists();
+            var query = ArtistIndexSqlQuery.Execute(_mainDatabase, paging);
+            var artists = _artistService.GetArtists(query.PageIds);
             var resources = artists.ToResource();
 
             MapCoversToLocal(resources.ToArray());
             LinkNextPreviousAlbums(resources.ToArray());
 
-            var artistStats = _artistStatisticsService.ArtistStatistics()
+            var pageIds = query.PageIds;
+            var artistStats = _artistStatisticsService.ArtistStatistics(pageIds)
                 .ToDictionary(x => x.ArtistId);
             LinkArtistStatistics(resources, artistStats);
             resources.ForEach(LinkRootFolderPath);
 
-            return ArtistIndexQuery.Apply(pagingResource, paging, resources);
+            return new ArtistIndexPagingResource
+            {
+                Page = Math.Max(1, paging.Page),
+                PageSize = Math.Clamp(paging.PageSize, 1, 500),
+                SortKey = string.IsNullOrWhiteSpace(paging.SortKey) ? "sortName" : paging.SortKey,
+                SortDirection = paging.SortDirection,
+                TotalRecords = query.TotalRecords,
+                TotalArtistCount = query.TotalArtistCount,
+                MatchingArtists = query.MatchingArtists,
+                Genres = query.Genres,
+                Summary = query.Summary,
+                Records = resources
+            };
         }
 
         [RestPostById]
