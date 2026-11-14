@@ -24,6 +24,7 @@ import withScrollPosition from 'Components/withScrollPosition';
 import { align, icons } from 'Helpers/Props';
 import SortDirection from 'Helpers/Props/SortDirection';
 import {
+  fetchArtistIndex,
   setArtistFilter,
   setArtistSort,
   setArtistTableOption,
@@ -32,7 +33,7 @@ import {
 import { executeCommand } from 'Store/Actions/commandActions';
 import { fetchQueueDetails } from 'Store/Actions/queueActions';
 import scrollPositions from 'Store/scrollPositions';
-import createArtistClientSideCollectionItemsSelector from 'Store/Selectors/createArtistClientSideCollectionItemsSelector';
+import createArtistIndexPagedItemsSelector from 'Store/Selectors/createArtistIndexPagedItemsSelector';
 import createCommandExecutingSelector from 'Store/Selectors/createCommandExecutingSelector';
 import createDimensionsSelector from 'Store/Selectors/createDimensionsSelector';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
@@ -84,6 +85,8 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
     error,
     totalItems,
     items,
+    page,
+    totalPages,
     columns,
     selectedFilterKey,
     filters,
@@ -92,7 +95,7 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
     sortDirection,
     view,
   }: ArtistAppState & ArtistIndexAppState & ClientSideCollectionAppState =
-    useSelector(createArtistClientSideCollectionItemsSelector('artistIndex'));
+    useSelector(createArtistIndexPagedItemsSelector());
 
   const isRssSyncExecuting = useSelector(
     createCommandExecutingSelector(RSS_SYNC)
@@ -108,6 +111,7 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
 
   useEffect(() => {
     dispatch(fetchQueueDetails({ all: true }));
+    dispatch(fetchArtistIndex({ page: 1 }));
   }, [dispatch]);
 
   const onRssSyncPress = useCallback(() => {
@@ -143,6 +147,7 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
   const onSortSelect = useCallback(
     (value: string) => {
       dispatch(setArtistSort({ sortKey: value }));
+      dispatch(fetchArtistIndex({ page: 1 }));
     },
     [dispatch]
   );
@@ -150,6 +155,7 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
   const onFilterSelect = useCallback(
     (value: string) => {
       dispatch(setArtistFilter({ selectedFilterKey: value }));
+      dispatch(fetchArtistIndex({ page: 1 }));
     },
     [dispatch]
   );
@@ -226,6 +232,23 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
             <ArtistIndexRefreshArtistsButton
               isSelectMode={isSelectMode}
               selectedFilterKey={selectedFilterKey}
+            />
+
+            <PageToolbarButton
+              label="Previous Page"
+              isDisabled={page <= 1 || isFetching}
+              onPress={() => dispatch(fetchArtistIndex({ page: page - 1 }))}
+            />
+
+            <PageToolbarButton
+              label={`Page ${page || 1} of ${totalPages || 1}`}
+              isDisabled={true}
+            />
+
+            <PageToolbarButton
+              label="Next Page"
+              isDisabled={page >= totalPages || isFetching}
+              onPress={() => dispatch(fetchArtistIndex({ page: page + 1 }))}
             />
 
             <PageToolbarButton
