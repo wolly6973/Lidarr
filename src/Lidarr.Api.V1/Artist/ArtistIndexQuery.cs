@@ -37,7 +37,7 @@ namespace Lidarr.Api.V1.Artist
             ArtistIndexPagingRequestResource request,
             IEnumerable<ArtistResource> source)
         {
-            var filters = ParseFilters(request.Filters);
+            var filters = ParseFilters(request);
             var matching = source.Where(artist => filters.All(filter => Matches(artist, filter))).ToList();
 
             var sortKey = SortKeys.Contains(request.SortKey) ? request.SortKey : "sortName";
@@ -62,16 +62,28 @@ namespace Lidarr.Api.V1.Artist
             return paging;
         }
 
-        private static List<ArtistIndexFilterResource> ParseFilters(string json)
+        private static List<ArtistIndexFilterResource> ParseFilters(ArtistIndexPagingRequestResource request)
         {
-            if (string.IsNullOrWhiteSpace(json))
+            if (string.IsNullOrWhiteSpace(request.Filters))
             {
-                return new List<ArtistIndexFilterResource>();
+                var builtIn = request.FilterKey switch
+                {
+                    "monitored" => "[{\"key\":\"monitored\",\"value\":true,\"type\":\"equal\"}]",
+                    "unmonitored" => "[{\"key\":\"monitored\",\"value\":false,\"type\":\"equal\"}]",
+                    "continuing" => "[{\"key\":\"status\",\"value\":\"continuing\",\"type\":\"equal\"}]",
+                    "ended" => "[{\"key\":\"status\",\"value\":\"ended\",\"type\":\"equal\"}]",
+                    "missing" => "[{\"key\":\"missing\",\"value\":true,\"type\":\"equal\"}]",
+                    _ => "[]"
+                };
+
+                return JsonSerializer.Deserialize<List<ArtistIndexFilterResource>>(builtIn,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ??
+                    new List<ArtistIndexFilterResource>();
             }
 
             try
             {
-                return JsonSerializer.Deserialize<List<ArtistIndexFilterResource>>(json,
+                return JsonSerializer.Deserialize<List<ArtistIndexFilterResource>>(request.Filters,
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ??
                     new List<ArtistIndexFilterResource>();
             }
@@ -180,6 +192,29 @@ namespace Lidarr.Api.V1.Artist
 
             if (item is DateTime date)
             {
+                if (type == "inLast" || type == "notInLast" ||
+                    type == "inNext" || type == "notInNext")
+                {
+                    if (value.ValueKind != JsonValueKind.Object ||
+                        !value.TryGetProperty("time", out var unit) ||
+                        !value.TryGetProperty("value", out var amount) ||
+                        !amount.TryGetDouble(out var number))
+                    {
+                        return false;
+                    }
+
+                    var boundary = AddDateOffset(DateTime.UtcNow, unit.GetString(), number *
+                        ((type == "inLast" || type == "notInLast") ? -1 : 1));
+                    return type switch
+                    {
+                        "inLast" => date > boundary && date < DateTime.UtcNow,
+                        "notInLast" => date <= boundary,
+                        "inNext" => date > DateTime.UtcNow && date < boundary,
+                        "notInNext" => date >= boundary,
+                        _ => false
+                    };
+                }
+
                 if (!DateTime.TryParse(ReadString(value), CultureInfo.InvariantCulture,
                     DateTimeStyles.AssumeUniversal, out var expectedDate))
                 {
@@ -224,6 +259,20 @@ namespace Lidarr.Api.V1.Artist
                 "lessThan" => comparison < 0,
                 "lessThanOrEqual" => comparison <= 0,
                 _ => comparison == 0
+            };
+        }
+
+        private static DateTime AddDateOffset(DateTime date, string unit, double value)
+        {
+            return unit switch
+            {
+                "minute" or "minutes" => date.AddMinutes(value),
+                "hour" or "hours" => date.AddHours(value),
+                "day" or "days" => date.AddDays(value),
+                "week" or "weeks" => date.AddDays(value * 7),
+                "month" or "months" => date.AddMonths((int)value),
+                "year" or "years" => date.AddYears((int)value),
+                _ => date
             };
         }
 
