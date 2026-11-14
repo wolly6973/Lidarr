@@ -282,7 +282,6 @@ ORDER BY genres.genre").ToList();
                                                        CultureInfo.InvariantCulture,
                                                        DateTimeStyles.AssumeUniversal,
                                                        out var date)
-                                                      DateTimeStyles.AssumeUniversal, out var date) => date.ToUniversalTime(),
                         JsonValueKind.String => value.GetString(),
                         JsonValueKind.Object when value.TryGetProperty("value", out var v) => v.ToString(),
                         _ => value.ToString()
@@ -304,7 +303,7 @@ ORDER BY genres.genre").ToList();
                     var rhs = "@" + parameter;
                     if (op == "contains" || op == "notContains")
                     {
-                        rhs = "'%" || @" + parameter + " || '%'";
+                        rhs = "'%' || @" + parameter + " || '%'";
                     }
 
                     if (op == "startsWith" || op == "notStartsWith")
@@ -314,7 +313,7 @@ ORDER BY genres.genre").ToList();
 
                     if (op == "endsWith" || op == "notEndsWith")
                     {
-                        rhs = "'%" || @" + parameter;
+                        rhs = "'%' || @" + parameter;
                     }
 
                     if (op == "notContains" || op == "notStartsWith" || op == "notEndsWith")
