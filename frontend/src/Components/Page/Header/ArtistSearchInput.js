@@ -171,6 +171,10 @@ class ArtistSearchInput extends Component {
       return;
     }
 
+    if (!this.props.isArtistPopulated) {
+      return;
+    }
+
     const {
       suggestions,
       value
