@@ -119,7 +119,7 @@ artist_base AS (
                 order += ", " + SortExpression(secondarySort) +
                          (request.SecondarySortDirection == SortDirection.Descending ? " DESC" : " ASC");
             }
-            order += ", ""Id"" ASC";
+            order += ", b.\"Id\" ASC";
 
             var page = Math.Max(1, request.Page);
             var pageSize = Math.Clamp(request.PageSize, 1, 500);
@@ -127,7 +127,7 @@ artist_base AS (
             parameters.Add("limit", pageSize);
 
             var sql = BaseCtes + @",
-matched AS (SELECT * FROM artist_base" + where + @"),
+matched AS (SELECT b.* FROM artist_base b" + where + @"),
 numbered AS (
     SELECT m.*,
            COUNT(*) OVER() AS ""TotalMatches"",
