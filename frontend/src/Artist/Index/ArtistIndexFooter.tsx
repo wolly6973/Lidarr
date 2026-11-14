@@ -2,8 +2,8 @@ import classNames from 'classnames';
 import React from 'react';
 import { useSelector } from 'react-redux';
 import { createSelector } from 'reselect';
-import AppState from 'App/State/AppState';
 import { ColorImpairedConsumer } from 'App/ColorImpairedContext';
+import AppState from 'App/State/AppState';
 import DescriptionList from 'Components/DescriptionList/DescriptionList';
 import DescriptionListItem from 'Components/DescriptionList/DescriptionListItem';
 import formatBytes from 'Utilities/Number/formatBytes';
@@ -13,15 +13,16 @@ import styles from './ArtistIndexFooter.css';
 function createArtistSelector() {
   return createSelector(
     (state: AppState) => state.artistIndex.summary,
-    (summary) => summary || {
-      artistCount: 0,
-      ended: 0,
-      continuing: 0,
-      monitored: 0,
-      trackCount: 0,
-      trackFileCount: 0,
-      sizeOnDisk: 0
-    }
+    (summary) =>
+      summary || {
+        artistCount: 0,
+        ended: 0,
+        continuing: 0,
+        monitored: 0,
+        trackCount: 0,
+        trackFileCount: 0,
+        sizeOnDisk: 0,
+      }
   );
 }
 
