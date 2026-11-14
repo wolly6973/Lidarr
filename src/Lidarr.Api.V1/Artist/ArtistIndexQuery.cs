@@ -16,9 +16,29 @@ namespace Lidarr.Api.V1.Artist
         public SortDirection? SecondarySortDirection { get; set; }
     }
 
+    public class ArtistIndexMatchingArtistResource
+    {
+        public int Id { get; set; }
+        public string SortName { get; set; }
+    }
+
+    public class ArtistIndexSummaryResource
+    {
+        public int ArtistCount { get; set; }
+        public int Ended { get; set; }
+        public int Continuing { get; set; }
+        public int Monitored { get; set; }
+        public int TrackCount { get; set; }
+        public int TrackFileCount { get; set; }
+        public long SizeOnDisk { get; set; }
+    }
+
     public class ArtistIndexPagingResource : PagingResource<ArtistResource>
     {
-        public List<int> MatchingIds { get; set; } = new();
+        public int TotalArtistCount { get; set; }
+        public List<ArtistIndexMatchingArtistResource> MatchingArtists { get; set; } = new();
+        public List<string> Genres { get; set; } = new();
+        public ArtistIndexSummaryResource Summary { get; set; } = new();
     }
 
     public class ArtistIndexFilterResource
@@ -42,8 +62,9 @@ namespace Lidarr.Api.V1.Artist
             ArtistIndexPagingRequestResource request,
             IEnumerable<ArtistResource> source)
         {
+            var allArtists = source.ToList();
             var filters = ParseFilters(request);
-            var matching = source.Where(artist => filters.All(filter => Matches(artist, filter))).ToList();
+            var matching = allArtists.Where(artist => filters.All(filter => Matches(artist, filter))).ToList();
 
             var sortKey = SortKeys.Contains(request.SortKey) ? request.SortKey : "sortName";
             var descending = request.SortDirection == SortDirection.Descending;
@@ -71,7 +92,26 @@ namespace Lidarr.Api.V1.Artist
                 SortKey = sortKey,
                 SortDirection = paging.SortDirection,
                 TotalRecords = matching.Count,
-                MatchingIds = ordered.Select(x => x.Id).ToList(),
+                TotalArtistCount = allArtists.Count,
+                MatchingArtists = ordered.Select(x => new ArtistIndexMatchingArtistResource
+                {
+                    Id = x.Id,
+                    SortName = x.SortName
+                }).ToList(),
+                Genres = allArtists.SelectMany(x => x.Genres ?? new List<string>())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                    .ToList(),
+                Summary = new ArtistIndexSummaryResource
+                {
+                    ArtistCount = matching.Count,
+                    Ended = matching.Count(x => x.Status == ArtistStatusType.Ended),
+                    Continuing = matching.Count(x => x.Status != ArtistStatusType.Ended),
+                    Monitored = matching.Count(x => x.Monitored),
+                    TrackCount = matching.Sum(x => x.Statistics?.TrackCount ?? 0),
+                    TrackFileCount = matching.Sum(x => x.Statistics?.TrackFileCount ?? 0),
+                    SizeOnDisk = matching.Sum(x => x.Statistics?.SizeOnDisk ?? 0L)
+                },
                 Records = ordered.Skip((page - 1) * pageSize).Take(pageSize).ToList()
             };
         }
