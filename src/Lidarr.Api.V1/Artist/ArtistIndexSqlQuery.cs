@@ -20,6 +20,7 @@ namespace Lidarr.Api.V1.Artist
         public long TrackCount { get; set; }
         public long TrackFileCount { get; set; }
         public long SizeOnDisk { get; set; }
+        public long RowNumber { get; set; }
     }
 
     public sealed class ArtistIndexSqlSummary
@@ -141,50 +142,46 @@ artist_base AS (
 
             var sql = BaseCtes + @",
 matched AS (SELECT b.* FROM artist_base b" + where + @")
-SELECT b.""Id"", b.""SortName""
+SELECT b.""Id"", b.""SortName"",
+       COUNT(*) OVER() AS ""TotalMatches"",
+       COUNT(*) OVER()::integer AS ""ArtistCount"",
+       SUM(CASE WHEN b.""Status"" = 1 THEN 1 ELSE 0 END) OVER()::integer AS ""Ended"",
+       SUM(CASE WHEN b.""Status"" <> 1 THEN 1 ELSE 0 END) OVER()::integer AS ""Continuing"",
+       SUM(CASE WHEN b.""Monitored"" THEN 1 ELSE 0 END) OVER()::integer AS ""Monitored"",
+       SUM(b.""TrackCount"") OVER()::bigint AS ""TrackCount"",
+       SUM(b.""TrackFileCount"") OVER()::bigint AS ""TrackFileCount"",
+       SUM(b.""SizeOnDisk"") OVER()::bigint AS ""SizeOnDisk"",
+       ROW_NUMBER() OVER (ORDER BY " + order + @") AS ""RowNumber""
 FROM matched b
-ORDER BY " + order + @"
-OFFSET @offset LIMIT @limit";
+ORDER BY " + order;
 
             using var connection = database.OpenConnection();
-            var rows = connection.Query<ArtistIndexSqlRow>(sql, pageParameters).ToList();
-            var summarySql = BaseCtes + @",
-matched AS (SELECT b.* FROM artist_base b" + where + @")
-SELECT COUNT(*)::integer AS ""ArtistCount"",
-       COUNT(*) FILTER (WHERE ""Status"" = 1)::integer AS ""Ended"",
-       COUNT(*) FILTER (WHERE ""Status"" <> 1)::integer AS ""Continuing"",
-       COUNT(*) FILTER (WHERE ""Monitored"")::integer AS ""Monitored"",
-       COALESCE(SUM(""TrackCount""), 0)::bigint AS ""TrackCount"",
-       COALESCE(SUM(""TrackFileCount""), 0)::bigint AS ""TrackFileCount"",
-       COALESCE(SUM(""SizeOnDisk""), 0)::bigint AS ""SizeOnDisk""
-FROM matched";
-            var summary = connection.QuerySingle<ArtistIndexSqlSummary>(summarySql, filterParameters);
+            var rows = connection.Query<ArtistIndexSqlRow>(sql, filterParameters).ToList();
+            var offset = (page - 1) * pageSize;
             var result = new ArtistIndexSqlResult
             {
                 TotalArtistCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM \"Artists\""),
                 SortKey = primarySort,
-                TotalRecords = summary.ArtistCount,
-                PageIds = rows.Select(x => x.Id).ToList(),
-                MatchingArtists = new List<ArtistIndexMatchingArtistResource>(),
-                Summary = new ArtistIndexSummaryResource
+                TotalRecords = rows.Count == 0 ? 0 : checked((int)rows[0].TotalMatches),
+                PageIds = rows.Where(x => x.RowNumber > offset && x.RowNumber <= offset + pageSize)
+                    .Select(x => x.Id).ToList(),
+                MatchingArtists = rows.Select(x => new ArtistIndexMatchingArtistResource
                 {
-                    ArtistCount = summary.ArtistCount,
-                    Ended = summary.Ended,
-                    Continuing = summary.Continuing,
-                    Monitored = summary.Monitored,
-                    TrackCount = checked((int)summary.TrackCount),
-                    TrackFileCount = checked((int)summary.TrackFileCount),
-                    SizeOnDisk = summary.SizeOnDisk
+                    Id = x.Id,
+                    SortName = x.SortName ?? string.Empty
+                }).ToList(),
+                Summary = rows.Count == 0 ? new ArtistIndexSummaryResource() : new ArtistIndexSummaryResource
+                {
+                    ArtistCount = rows[0].ArtistCount,
+                    Ended = rows[0].Ended,
+                    Continuing = rows[0].Continuing,
+                    Monitored = rows[0].Monitored,
+                    TrackCount = checked((int)rows[0].TrackCount),
+                    TrackFileCount = checked((int)rows[0].TrackFileCount),
+                    SizeOnDisk = rows[0].SizeOnDisk
                 }
             };
 
-            // Keep the lightweight alphabet-navigation list, but never materialize
-            // Artist entities/resources or statistics for the entire library.
-            var matchingSql = BaseCtes + @"
-SELECT b.""Id"", b.""SortName""
-FROM artist_base b" + where + @"
-ORDER BY b.""SortName"" NULLS LAST, b.""Id""";
-            result.MatchingArtists = connection.Query<ArtistIndexMatchingArtistResource>(matchingSql, filterParameters).ToList();
             result.Genres = connection.Query<string>(@"
 SELECT DISTINCT genres.genre
 FROM ""Artists"" a
