@@ -64,7 +64,7 @@ namespace Lidarr.Api.V1.Artist
                 SortKey = sortKey,
                 SortDirection = paging.SortDirection,
                 TotalRecords = matching.Count,
-                Records = ordered.Skip((page - 1) * pageSize).Take(pageSize).ToList());
+                Records = ordered.Skip((page - 1) * pageSize).Take(pageSize).ToList()
             };
         }
 
