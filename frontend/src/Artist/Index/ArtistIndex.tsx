@@ -7,7 +7,6 @@ import React, {
 } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { SelectProvider } from 'App/SelectContext';
-import AppState from 'App/State/AppState';
 import ArtistAppState, { ArtistIndexAppState } from 'App/State/ArtistAppState';
 import ClientSideCollectionAppState from 'App/State/ClientSideCollectionAppState';
 import NoArtist from 'Artist/NoArtist';
@@ -102,7 +101,6 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
   }: ArtistAppState & ArtistIndexAppState & ClientSideCollectionAppState =
     useSelector(createArtistIndexPagedItemsSelector());
 
-  const artistItems = useSelector((state: AppState) => state.artist.items);
   const filteredItems = useSelector(createArtistIndexFilteredNamesSelector());
   const isRssSyncExecuting = useSelector(
     createCommandExecutingSelector(RSS_SYNC)
@@ -125,7 +123,7 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
 
   useEffect(() => {
     dispatch(fetchArtistIndex({}));
-  }, [artistItems, customFilters, dispatch]);
+  }, [customFilters, dispatch]);
 
   const onRssSyncPress = useCallback(() => {
     dispatch(
