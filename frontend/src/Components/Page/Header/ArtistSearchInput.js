@@ -33,6 +33,13 @@ class ArtistSearchInput extends Component {
     this.props.bindShortcut(shortcuts.ARTIST_SEARCH_INPUT.key, this.focusInput);
   }
 
+  componentDidUpdate(prevProps) {
+    if (!prevProps.isArtistPopulated && this.props.isArtistPopulated && this.state.value) {
+      this.setState({ loading: true });
+      this.requestSuggestions(this.state.value);
+    }
+  }
+
   componentWillUnmount() {
     if (this._worker) {
       this._worker.removeEventListener('message', this.onSuggestionsReceived, false);
@@ -119,6 +126,12 @@ class ArtistSearchInput extends Component {
 
   //
   // Listeners
+
+  onFocus = () => {
+    if (!this.props.isArtistPopulated) {
+      this.props.onSearchFocus();
+    }
+  };
 
   onChange = (event, { newValue, method }) => {
     if (method === 'up' || method === 'down') {
@@ -337,6 +350,8 @@ class ArtistSearchInput extends Component {
 
 ArtistSearchInput.propTypes = {
   artists: PropTypes.arrayOf(PropTypes.object).isRequired,
+  isArtistPopulated: PropTypes.bool.isRequired,
+  onSearchFocus: PropTypes.func.isRequired,
   onGoToArtist: PropTypes.func.isRequired,
   onGoToAddNewArtist: PropTypes.func.isRequired,
   bindShortcut: PropTypes.func.isRequired
