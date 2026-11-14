@@ -10,6 +10,10 @@ import { Filter, FilterBuilderProp } from './AppState';
 export interface ArtistIndexAppState {
   sortKey: string;
   sortDirection: SortDirection;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  totalRecords: number;
   secondarySortKey: string;
   secondarySortDirection: SortDirection;
   view: string;
