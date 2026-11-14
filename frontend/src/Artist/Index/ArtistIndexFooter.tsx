@@ -35,7 +35,7 @@ export default function ArtistIndexFooter() {
     ended,
     continuing,
     monitored,
-    sizeOnDisk: totalFileSize
+    sizeOnDisk: totalFileSize,
   } = artist;
 
   return (
