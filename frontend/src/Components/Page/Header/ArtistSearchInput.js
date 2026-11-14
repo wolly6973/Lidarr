@@ -128,7 +128,7 @@ class ArtistSearchInput extends Component {
   // Listeners
 
   onFocus = () => {
-    if (!this.props.isArtistPopulated) {
+    if (!this.props.isArtistPopulated && !this.props.isArtistFetching) {
       this.props.onSearchFocus();
     }
   };
@@ -351,6 +351,7 @@ class ArtistSearchInput extends Component {
 ArtistSearchInput.propTypes = {
   artists: PropTypes.arrayOf(PropTypes.object).isRequired,
   isArtistPopulated: PropTypes.bool.isRequired,
+  isArtistFetching: PropTypes.bool.isRequired,
   onSearchFocus: PropTypes.func.isRequired,
   onGoToArtist: PropTypes.func.isRequired,
   onGoToAddNewArtist: PropTypes.func.isRequired,
