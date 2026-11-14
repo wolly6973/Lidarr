@@ -180,10 +180,10 @@ namespace Lidarr.Api.V1.Artist
 
             return new ArtistIndexPagingResource
             {
-                Page = Math.Max(1, paging.Page),
-                PageSize = Math.Clamp(paging.PageSize, 1, 500),
+                Page = (byte)Math.Max(1, paging.Page ?? 1),
+                PageSize = (byte)Math.Clamp(paging.PageSize ?? 50, 1, 500),
                 SortKey = query.SortKey,
-                SortDirection = paging.SortDirection,
+                SortDirection = paging.SortDirection ?? SortDirection.Ascending,
                 TotalRecords = query.TotalRecords,
                 TotalArtistCount = query.TotalArtistCount,
                 MatchingArtists = query.MatchingArtists,
