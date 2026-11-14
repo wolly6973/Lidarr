@@ -52,6 +52,8 @@ namespace Lidarr.Api.V1.Artist
                     request.SecondarySortDirection == SortDirection.Descending);
             }
 
+            ordered = ordered.ThenBy(x => x.Id);
+
             var page = Math.Max(1, paging.Page);
             var pageSize = Math.Clamp(paging.PageSize, 1, 500);
             paging.Page = page;
@@ -319,8 +321,8 @@ namespace Lidarr.Api.V1.Artist
             };
 
             return descending
-                ? source.OrderByDescending(selector).ThenBy(x => x.Id)
-                : source.OrderBy(selector).ThenBy(x => x.Id);
+                ? source.OrderByDescending(selector)
+                : source.OrderBy(selector);
         }
 
         private static IOrderedEnumerable<ArtistResource> Order(
