@@ -69,13 +69,15 @@ namespace Lidarr.Api.V1.Artist
 
             var sortKey = SortKeys.Contains(request.SortKey) ? request.SortKey : "sortName";
             var descending = request.SortDirection == SortDirection.Descending;
-            IOrderedEnumerable<ArtistResource> ordered = Order(matching, sortKey, descending);
+            var ordered = Order(matching, sortKey, descending);
 
             if (!string.IsNullOrWhiteSpace(request.SecondarySortKey) &&
                 SortKeys.Contains(request.SecondarySortKey) &&
                 !string.Equals(sortKey, request.SecondarySortKey, StringComparison.OrdinalIgnoreCase))
             {
-                ordered = Order(ordered, request.SecondarySortKey,
+                ordered = Order(
+                    ordered,
+                    request.SecondarySortKey,
                     request.SecondarySortDirection == SortDirection.Descending);
             }
 
@@ -271,8 +273,11 @@ namespace Lidarr.Api.V1.Artist
                     };
                 }
 
-                if (!DateTime.TryParse(ReadString(value), CultureInfo.InvariantCulture,
-                    DateTimeStyles.AssumeUniversal, out var expectedDate))
+                if (!DateTime.TryParse(
+                    ReadString(value),
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.AssumeUniversal,
+                    out var expectedDate))
                 {
                     return false;
                 }
@@ -382,7 +387,7 @@ namespace Lidarr.Api.V1.Artist
                 "sortName" => x => x.SortName ?? string.Empty,
                 "added" => x => x.Added,
                 "albumCount" => x => x.Statistics?.AlbumCount ?? 0,
-                "trackProgress" => x => TrackProgress(x) + (x.Statistics?.TrackCount ?? 0) / 1000000d,
+                "trackProgress" => x => TrackProgress(x) + ((x.Statistics?.TrackCount ?? 0) / 1000000d),
                 "trackCount" => x => x.Statistics?.TotalTrackCount ?? 0,
                 "sizeOnDisk" => x => x.Statistics?.SizeOnDisk ?? 0L,
                 "qualityProfileId" => x => x.QualityProfileId,
