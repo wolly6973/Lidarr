@@ -131,7 +131,8 @@ namespace Lidarr.Api.V1.Artist
                     _ => "[]"
                 };
 
-                return JsonSerializer.Deserialize<List<ArtistIndexFilterResource>>(builtIn,
+                return JsonSerializer.Deserialize<List<ArtistIndexFilterResource>>(
+                    builtIn,
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ??
                     new List<ArtistIndexFilterResource>();
             }
@@ -303,7 +304,8 @@ namespace Lidarr.Api.V1.Artist
             };
         }
 
-        private static bool CompareValues<T>(T left, T right, string type) where T : IComparable<T>
+        private static bool CompareValues<T>(T left, T right, string type)
+            where T : IComparable<T>
         {
             var comparison = left.CompareTo(right);
             return type switch
@@ -347,7 +349,7 @@ namespace Lidarr.Api.V1.Artist
         {
             Func<ArtistResource, object> selector = key switch
             {
-                "status" => x => (x.Monitored ? 2 : 0) + (x.Status.ToString().Equals("continuing", StringComparison.OrdinalIgnoreCase) ? 1 : 0),
+                "status" => x => (x.Monitored ? 2 : 0) + ((x.Status.ToString().Equals("continuing", StringComparison.OrdinalIgnoreCase) ? 1 : 0)),
                 "sortName" => x => x.SortName ?? string.Empty,
                 "artistType" => x => x.ArtistType ?? string.Empty,
                 "qualityProfileId" => x => x.QualityProfileId,
@@ -357,7 +359,7 @@ namespace Lidarr.Api.V1.Artist
                 "lastAlbum" => x => x.LastAlbum?.ReleaseDate ?? new DateTime(1000, 1, 1),
                 "added" => x => x.Added,
                 "albumCount" => x => x.Statistics?.AlbumCount ?? 0,
-                "trackProgress" => x => TrackProgress(x) + (x.Statistics?.TrackCount ?? 0) / 1000000d,
+                "trackProgress" => x => TrackProgress(x) + ((x.Statistics?.TrackCount ?? 0) / 1000000d),
                 "trackCount" => x => x.Statistics?.TotalTrackCount ?? 0,
                 "path" => x => x.Path ?? string.Empty,
                 "sizeOnDisk" => x => x.Statistics?.SizeOnDisk ?? 0L,
