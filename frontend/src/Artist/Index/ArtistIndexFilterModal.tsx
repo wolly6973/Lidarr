@@ -3,7 +3,10 @@ import { useDispatch, useSelector } from 'react-redux';
 import { createSelector } from 'reselect';
 import AppState from 'App/State/AppState';
 import FilterModal from 'Components/Filter/FilterModal';
-import { setArtistFilter } from 'Store/Actions/artistIndexActions';
+import {
+  fetchArtistIndex,
+  setArtistFilter,
+} from 'Store/Actions/artistIndexActions';
 
 function createArtistSelector() {
   return createSelector(
@@ -39,6 +42,7 @@ export default function ArtistIndexFilterModal(
   const dispatchSetFilter = useCallback(
     (payload: unknown) => {
       dispatch(setArtistFilter(payload));
+      dispatch(fetchArtistIndex({ page: 1 }));
     },
     [dispatch]
   );
