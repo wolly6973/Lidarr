@@ -114,12 +114,6 @@ jobs:
           corepack prepare yarn@1.22.19 --activate
           yarn --version
 
-      - name: Diagnose Artist Index import ordering
-        run: |
-          yarn install --frozen-lockfile
-          yarn eslint --config frontend/.eslintrc.js --ignore-path frontend/.eslintignore --fix frontend/src/Store/Actions/artistIndexActions.js
-          sed -n '1,28p' frontend/src/Store/Actions/artistIndexActions.js
-
       - name: Lint and build frontend
         run: ./build.sh --frontend --lint
 
