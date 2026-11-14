@@ -160,7 +160,7 @@ namespace Lidarr.Api.V1.Artist
 
             var value = filter.Value;
             var key = filter.Key;
-            object item = key switch
+            var item = key switch
             {
                 "missing" => (artist.Statistics?.TrackCount ?? 0) > (artist.Statistics?.TrackFileCount ?? 0),
                 "monitored" => artist.Monitored,
@@ -354,7 +354,7 @@ namespace Lidarr.Api.V1.Artist
         {
             Func<ArtistResource, object> selector = key switch
             {
-                "status" => x => (x.Monitored ? 2 : 0) + ((x.Status.ToString().Equals("continuing", StringComparison.OrdinalIgnoreCase) ? 1 : 0)),
+                "status" => x => (x.Monitored ? 2 : 0) + (x.Status.ToString().Equals("continuing", StringComparison.OrdinalIgnoreCase) ? 1 : 0),
                 "sortName" => x => x.SortName ?? string.Empty,
                 "artistType" => x => x.ArtistType ?? string.Empty,
                 "qualityProfileId" => x => x.QualityProfileId,
