@@ -157,28 +157,21 @@ namespace Lidarr.Api.V1.Artist
 
         [HttpGet("paged")]
         [Produces("application/json")]
-        public PagingResource<ArtistResource> GetPagedArtists([FromQuery] PagingRequestResource paging)
+        public PagingResource<ArtistResource> GetPagedArtists([FromQuery] ArtistIndexPagingRequestResource paging)
         {
             var pagingResource = new PagingResource<ArtistResource>(paging);
-            var pagingSpec = pagingResource.MapToPagingSpec<ArtistResource, NzbDrone.Core.Music.Artist>("sortName", SortDirection.Ascending);
-            var result = _artistService.Paged(pagingSpec);
-
-            var artists = result.Records;
+            var artists = _artistService.GetAllArtists();
             var resources = artists.ToResource();
 
             MapCoversToLocal(resources.ToArray());
             LinkNextPreviousAlbums(resources.ToArray());
 
-            var artistIds = artists.Select(x => x.Id).ToHashSet();
-            var artistStats = _artistStatisticsService.ArtistStatistics(artistIds)
+            var artistStats = _artistStatisticsService.ArtistStatistics()
                 .ToDictionary(x => x.ArtistId);
             LinkArtistStatistics(resources, artistStats);
             resources.ForEach(LinkRootFolderPath);
 
-            pagingResource.TotalRecords = result.TotalRecords;
-            pagingResource.Records = resources;
-
-            return pagingResource;
+            return ArtistIndexQuery.Apply(pagingResource, paging, resources);
         }
 
         [RestPostById]
