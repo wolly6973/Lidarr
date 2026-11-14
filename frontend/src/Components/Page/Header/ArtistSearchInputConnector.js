@@ -46,10 +46,12 @@ function createMapStateToProps() {
   return createDeepEqualSelector(
     createCleanArtistSelector(),
     (state) => state.artist.isPopulated,
-    (artists, isArtistPopulated) => {
+    (state) => state.artist.isFetching,
+    (artists, isArtistPopulated, isArtistFetching) => {
       return {
         artists,
-        isArtistPopulated
+        isArtistPopulated,
+        isArtistFetching
       };
     }
   );
