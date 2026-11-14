@@ -180,7 +180,7 @@ namespace Lidarr.Api.V1.Artist
             {
                 Page = Math.Max(1, paging.Page),
                 PageSize = Math.Clamp(paging.PageSize, 1, 500),
-                SortKey = string.IsNullOrWhiteSpace(paging.SortKey) ? "sortName" : paging.SortKey,
+                SortKey = query.SortKey,
                 SortDirection = paging.SortDirection,
                 TotalRecords = query.TotalRecords,
                 TotalArtistCount = query.TotalArtistCount,
