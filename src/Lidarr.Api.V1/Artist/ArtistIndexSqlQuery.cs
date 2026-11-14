@@ -199,9 +199,9 @@ ORDER BY b.""SortName"" NULLS LAST, b.""Id""";
             result.Genres = connection.Query<string>(@"
 SELECT DISTINCT genre
 FROM ""ArtistMetadata"" m
-CROSS JOIN LATERAL jsonb_array_elements_text(COALESCE(m.""Genres""::jsonb, '[]'::jsonb)) AS genre
-WHERE genre IS NOT NULL AND genre <> ''
-ORDER BY genre", parameters).ToList();
+CROSS JOIN LATERAL jsonb_array_elements_text(COALESCE(m.""Genres""::jsonb, '[]'::jsonb)) AS genres(genre)
+WHERE genres.genre IS NOT NULL AND genres.genre <> ''
+ORDER BY genres.genre", parameters).ToList();
 
             return result;
         }
@@ -245,7 +245,7 @@ ORDER BY genre", parameters).ToList();
                     "sortName" => "COALESCE(b.\"SortName\", '')",
                     "artistType" => "COALESCE(b.\"Type\", '')",
                     "ratings" => "COALESCE((b.\"Ratings\"::jsonb ->> 'Value')::numeric, 0) * 10",
-                    "genres" => "EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(b.\"Genres\"::jsonb, '[]'::jsonb)) g WHERE lower(g) = lower(@p" + index + "))",
+                    "genres" => "EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(b.\"Genres\"::jsonb, '[]'::jsonb)) AS genres(genre) WHERE lower(genres.genre) = lower(@p" + index + "))",
                     "tags" => "@p" + index + " = ANY(COALESCE(b.\"Tags\", ARRAY[]::integer[]))",
                     _ => null
                 };
@@ -319,7 +319,7 @@ ORDER BY genre", parameters).ToList();
                     if (op == "endsWith" || op == "notEndsWith") rhs = "'%' || @" + parameter;
                     if (op == "notContains" || op == "notStartsWith" || op == "notEndsWith") comparison = "NOT ILIKE";
                     var clause = expression.Replace("@p" + (index - 1), "@" + parameter) + " " + comparison + " " + rhs;
-                    if (key == "genres") clause = (op == "notContains" || op == "notEqual" ? "NOT " : string.Empty) + "EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(b.\"Genres\"::jsonb, '[]'::jsonb)) g WHERE lower(g) = lower(@" + parameter + "))";
+                    if (key == "genres") clause = (op == "notContains" || op == "notEqual" ? "NOT " : string.Empty) + "EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(b.\"Genres\"::jsonb, '[]'::jsonb)) AS genres(genre) WHERE lower(genres.genre) = lower(@" + parameter + "))";
                     if (key == "tags") clause = (op == "notContains" || op == "notEqual" ? "NOT " : string.Empty) + "(@" + parameter + " = ANY(COALESCE(b.\"Tags\", ARRAY[]::integer[])))";
                     alternatives.Add(clause);
                 }
@@ -344,7 +344,7 @@ ORDER BY genre", parameters).ToList();
                 "artistType" => "b.\"Type\"",
                 "qualityProfileId" => "b.\"QualityProfileId\"",
                 "metadataProfileId" => "b.\"MetadataProfileId\"",
-                "monitorNewItems" => "b.\"MonitorNewItems\"",
+                "monitorNewItems" => "CASE b.\"MonitorNewItems\" WHEN 0 THEN 0 WHEN 2 THEN 1 WHEN 1 THEN 2 ELSE b.\"MonitorNewItems\" END",
                 "nextAlbum" => "COALESCE(b.\"NextAlbumDate\", TIMESTAMP '1000-01-01')",
                 "lastAlbum" => "COALESCE(b.\"LastAlbumDate\", TIMESTAMP '1000-01-01')",
                 "added" => "b.\"Added\"",
@@ -353,7 +353,7 @@ ORDER BY genre", parameters).ToList();
                 "trackCount" => "b.\"TotalTrackCount\"",
                 "path" => "b.\"Path\"",
                 "sizeOnDisk" => "b.\"SizeOnDisk\"",
-                "genres" => "(SELECT string_agg(g, ', ' ORDER BY lower(g)) FROM jsonb_array_elements_text(COALESCE(b.\"Genres\"::jsonb, '[]'::jsonb)) g)",
+                "genres" => "(SELECT string_agg(g, ', ' ORDER BY lower(g)) FROM jsonb_array_elements_text(COALESCE(b.\"Genres\"::jsonb, '[]'::jsonb)) AS genres(genre))",
                 "ratings" => "COALESCE((b.\"Ratings\"::jsonb ->> 'Value')::numeric, 0)",
                 "tags" => "(SELECT string_agg(t::text, ',' ORDER BY t) FROM unnest(COALESCE(b.\"Tags\", ARRAY[]::integer[])) t)",
                 _ => "b.\"SortName\""
