@@ -4,8 +4,13 @@ export function createArtistSelectorForHook(artistId) {
   return createSelector(
     (state) => state.artist.itemMap,
     (state) => state.artist.items,
-    (itemMap, allArtists) => {
-      return artistId ? allArtists[itemMap[artistId]]: undefined;
+    (state) => state.artistIndex.items,
+    (itemMap, allArtists, pagedArtists) => {
+      if (artistId in itemMap) {
+        return allArtists[itemMap[artistId]];
+      }
+
+      return pagedArtists.find((artist) => artist.id === artistId);
     }
   );
 }
@@ -15,8 +20,13 @@ function createArtistSelector() {
     (state, { artistId }) => artistId,
     (state) => state.artist.itemMap,
     (state) => state.artist.items,
-    (artistId, itemMap, allArtists) => {
-      return allArtists[itemMap[artistId]];
+    (state) => state.artistIndex.items,
+    (artistId, itemMap, allArtists, pagedArtists) => {
+      if (artistId in itemMap) {
+        return allArtists[itemMap[artistId]];
+      }
+
+      return pagedArtists.find((artist) => artist.id === artistId);
     }
   );
 }
