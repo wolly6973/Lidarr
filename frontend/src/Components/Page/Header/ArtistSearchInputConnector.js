@@ -3,6 +3,7 @@ import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
 import createAllArtistSelector from 'Store/Selectors/createAllArtistSelector';
 import createDeepEqualSelector from 'Store/Selectors/createDeepEqualSelector';
+import { fetchArtist } from 'Store/Actions/artistActions';
 import createTagsSelector from 'Store/Selectors/createTagsSelector';
 import ArtistSearchInput from './ArtistSearchInput';
 
@@ -44,9 +45,11 @@ function createCleanArtistSelector() {
 function createMapStateToProps() {
   return createDeepEqualSelector(
     createCleanArtistSelector(),
-    (artists) => {
+    (state) => state.artist.isPopulated,
+    (artists, isArtistPopulated) => {
       return {
-        artists
+        artists,
+        isArtistPopulated
       };
     }
   );
@@ -54,6 +57,10 @@ function createMapStateToProps() {
 
 function createMapDispatchToProps(dispatch, props) {
   return {
+    onSearchFocus() {
+      dispatch(fetchArtist());
+    },
+
     onGoToArtist(foreignArtistId) {
       dispatch(push(`${window.Lidarr.urlBase}/artist/${foreignArtistId}`));
     },
