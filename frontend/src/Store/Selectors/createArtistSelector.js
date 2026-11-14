@@ -22,7 +22,7 @@ function createArtistSelector() {
     (state) => state.artist.items,
     (state) => state.artistIndex.items,
     (artistId, itemMap, allArtists, pagedArtists) => {
-      if (artistId in itemMap) {
+      if (itemMap && artistId in itemMap) {
         return allArtists[itemMap[artistId]];
       }
 
