@@ -12,6 +12,7 @@ import VirtualTableSelectAllHeaderCell from 'Components/Table/VirtualTableSelect
 import { icons } from 'Helpers/Props';
 import SortDirection from 'Helpers/Props/SortDirection';
 import {
+  fetchArtistIndex,
   setArtistSort,
   setArtistTableOption,
 } from 'Store/Actions/artistIndexActions';
@@ -35,6 +36,7 @@ function ArtistIndexTableHeader(props: ArtistIndexTableHeaderProps) {
   const onSortPress = useCallback(
     (value: string) => {
       dispatch(setArtistSort({ sortKey: value }));
+      dispatch(fetchArtistIndex({ page: 1 }));
     },
     [dispatch]
   );
