@@ -119,13 +119,17 @@ export function createCustomFiltersSelector(type, alternateType) {
   );
 }
 
-function createClientSideCollectionSelector(section, uiSection) {
+function createClientSideCollectionSelector(section, uiSection, useBaseSectionItems = false) {
   return createSelector(
     (state) => _.get(state, section),
     (state) => _.get(state, uiSection),
     createCustomFiltersSelector(section, uiSection),
     (sectionState, uiSectionState = {}, customFilters) => {
       const state = Object.assign({}, sectionState, uiSectionState, { customFilters });
+
+      if (useBaseSectionItems) {
+        state.items = sectionState.items;
+      }
 
       const filtered = filter(state.items, state);
       const sorted = sort(filtered, state);
