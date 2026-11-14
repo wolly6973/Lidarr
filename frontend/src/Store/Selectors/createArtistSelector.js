@@ -6,7 +6,7 @@ export function createArtistSelectorForHook(artistId) {
     (state) => state.artist.items,
     (state) => state.artistIndex.items,
     (itemMap, allArtists, pagedArtists) => {
-      if (artistId in itemMap) {
+      if (itemMap && artistId in itemMap) {
         return allArtists[itemMap[artistId]];
       }
 
