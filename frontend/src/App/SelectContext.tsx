@@ -28,6 +28,7 @@ interface SelectProviderOptions<T extends ModelBase> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   children: any;
   items: Array<T>;
+  preserveSelection?: boolean;
 }
 
 const SelectContext = React.createContext<
@@ -37,7 +38,7 @@ const SelectContext = React.createContext<
 export function SelectProvider<T extends ModelBase>(
   props: SelectProviderOptions<T>
 ) {
-  const { items } = props;
+  const { items, preserveSelection = false } = props;
   const [state, dispatch] = useSelectState();
 
   const dispatchWrapper = useCallback(
@@ -62,8 +63,8 @@ export function SelectProvider<T extends ModelBase>(
   const value: [SelectState, SelectDispatch] = [state, dispatchWrapper];
 
   useEffect(() => {
-    dispatch({ type: 'updateItems', items });
-  }, [items, dispatch]);
+    dispatch({ type: 'updateItems', items, preserveSelection });
+  }, [items, preserveSelection, dispatch]);
 
   return (
     <SelectContext.Provider value={value}>
