@@ -510,4 +510,4 @@ export const reducers = createHandleActions({
     };
   }
 
-}, defaultState, section, actionHandlers);
+}, defaultState, section);
