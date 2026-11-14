@@ -1,9 +1,9 @@
 import { push } from 'connected-react-router';
 import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
+import { fetchArtist } from 'Store/Actions/artistActions';
 import createAllArtistSelector from 'Store/Selectors/createAllArtistSelector';
 import createDeepEqualSelector from 'Store/Selectors/createDeepEqualSelector';
-import { fetchArtist } from 'Store/Actions/artistActions';
 import createTagsSelector from 'Store/Selectors/createTagsSelector';
 import ArtistSearchInput from './ArtistSearchInput';
 
