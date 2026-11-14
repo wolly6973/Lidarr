@@ -118,9 +118,16 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
         private List<CandidateAlbumRelease> GetDbCandidatesByRelease(List<AlbumRelease> releases, bool includeExisting)
         {
             // get the local tracks on disk for each album
-            var albumTracks = releases.Select(x => x.AlbumId)
-                .Distinct()
-                .ToDictionary(id => id, id => includeExisting ? _mediaFileService.GetFilesByAlbum(id) : new List<TrackFile>());
+            var albumIds = releases.Select(x => x.AlbumId).Distinct().ToList();
+            var albumTracks = albumIds.ToDictionary(id => id, _ => new List<TrackFile>());
+
+            if (includeExisting)
+            {
+                foreach (var group in _mediaFileService.GetFilesByAlbums(albumIds).GroupBy(x => x.AlbumId))
+                {
+                    albumTracks[group.Key] = group.ToList();
+                }
+            }
 
             return releases.Select(x => new CandidateAlbumRelease
             {
@@ -148,9 +155,20 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
             if (albumTag.IsNotNullOrWhiteSpace())
             {
                 var possibleAlbums = _albumService.GetCandidates(artist.ArtistMetadataId, albumTag);
-                foreach (var album in possibleAlbums)
+                var albumIds = possibleAlbums.Select(x => x.Id).ToList();
+
+                if (albumIds.Count > 0)
                 {
-                    candidateReleases.AddRange(GetDbCandidatesByAlbum(localAlbumRelease, album, includeExisting));
+                    var albumOrder = albumIds
+                        .Select((id, index) => new { id, index })
+                        .ToDictionary(x => x.id, x => x.index);
+
+                    var releases = _releaseService.GetReleasesByAlbums(albumIds)
+                        .OrderBy(x => albumOrder[x.AlbumId])
+                        .ThenBy(x => Math.Abs(localAlbumRelease.TrackCount - x.TrackCount))
+                        .ToList();
+
+                    candidateReleases.AddRange(GetDbCandidatesByRelease(releases, includeExisting));
                 }
             }
 

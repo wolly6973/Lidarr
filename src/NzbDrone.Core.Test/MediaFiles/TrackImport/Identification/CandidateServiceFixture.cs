@@ -4,6 +4,7 @@ using FizzWare.NBuilder;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
+using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.TrackImport;
 using NzbDrone.Core.MediaFiles.TrackImport.Identification;
 using NzbDrone.Core.Music;
@@ -101,6 +102,50 @@ namespace NzbDrone.Core.Test.MediaFiles.TrackImport.Identification
             var localTracks = GivenLocalTracks(tracks, release);
 
             return new LocalAlbumRelease(localTracks);
+        }
+
+        [Test]
+        public void get_candidates_by_artist_should_load_releases_in_one_batch()
+        {
+            var local = GivenLocalAlbumRelease();
+            var artist = Builder<Artist>
+                .CreateNew()
+                .With(x => x.ArtistMetadataId = _artist.Id)
+                .Build();
+            var albums = Builder<Album>
+                .CreateListOfSize(2)
+                .All()
+                .With(x => x.ArtistMetadata = _artist)
+                .Build()
+                .ToList();
+
+            albums[0].Id = 101;
+            albums[1].Id = 102;
+
+            var releases = albums.Select(album => Builder<AlbumRelease>
+                .CreateNew()
+                .With(x => x.AlbumId = album.Id)
+                .With(x => x.Album = album)
+                .Build()).ToList();
+
+            Mocker.GetMock<IAlbumService>()
+                .Setup(x => x.GetCandidates(_artist.Id, "album"))
+                .Returns(albums);
+
+            Mocker.GetMock<IReleaseService>()
+                .Setup(x => x.GetReleasesByAlbums(It.Is<List<int>>(ids => ids.SequenceEqual(albums.Select(a => a.Id)))))
+                .Returns(releases);
+
+            var result = Subject.GetDbCandidatesFromTags(local, new IdentificationOverrides { Artist = artist }, false);
+
+            result.Select(x => x.AlbumRelease.Id).Should().Equal(releases.Select(x => x.Id));
+
+            Mocker.GetMock<IReleaseService>()
+                .Verify(x => x.GetReleasesByAlbums(It.IsAny<List<int>>()), Times.Once);
+            Mocker.GetMock<IReleaseService>()
+                .Verify(x => x.GetReleasesByAlbum(It.IsAny<int>()), Times.Never);
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(x => x.GetFilesByAlbums(It.IsAny<List<int>>()), Times.Never);
         }
 
         [Test]

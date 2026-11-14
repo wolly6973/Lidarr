@@ -10,6 +10,7 @@ namespace NzbDrone.Core.Music
     {
         AlbumRelease FindByForeignReleaseId(string foreignReleaseId, bool checkRedirect = false);
         List<AlbumRelease> FindByAlbum(int id);
+        List<AlbumRelease> FindByAlbums(List<int> albumIds);
         List<AlbumRelease> FindByRecordingId(List<string> recordingIds);
         List<AlbumRelease> GetReleasesForRefresh(int albumId, List<string> foreignReleaseIds);
         List<AlbumRelease> SetMonitored(AlbumRelease release);
@@ -61,6 +62,31 @@ namespace NzbDrone.Core.Music
 
                         return release;
                     }).ToList();
+        }
+
+        public List<AlbumRelease> FindByAlbums(List<int> albumIds)
+        {
+            if (!albumIds.Any())
+            {
+                return new List<AlbumRelease>();
+            }
+
+            // Populate album and artist metadata for all candidate releases in one query.
+            var builder = new SqlBuilder(_database.DatabaseType)
+                .LeftJoin<AlbumRelease, Album>((r, a) => r.AlbumId == a.Id)
+                .LeftJoin<Album, ArtistMetadata>((a, m) => a.ArtistMetadataId == m.Id)
+                .Where<AlbumRelease>(r => albumIds.Contains(r.AlbumId));
+
+            return _database.QueryJoined<AlbumRelease, Album, ArtistMetadata>(builder, (release, album, metadata) =>
+            {
+                if (album != null)
+                {
+                    album.ArtistMetadata = metadata;
+                    release.Album = album;
+                }
+
+                return release;
+            }).ToList();
         }
 
         public List<AlbumRelease> FindByRecordingId(List<string> recordingIds)

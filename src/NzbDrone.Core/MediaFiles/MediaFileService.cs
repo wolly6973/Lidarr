@@ -22,6 +22,7 @@ namespace NzbDrone.Core.MediaFiles
         void DeleteMany(List<TrackFile> trackFiles, DeleteMediaFileReason reason);
         List<TrackFile> GetFilesByArtist(int artistId);
         List<TrackFile> GetFilesByAlbum(int albumId);
+        List<TrackFile> GetFilesByAlbums(List<int> albumIds);
         List<TrackFile> GetFilesByRelease(int releaseId);
         List<TrackFile> GetUnmappedFiles();
         List<IFileInfo> FilterUnchangedFiles(List<IFileInfo> files, FilterFilesType filter);
@@ -184,6 +185,11 @@ namespace NzbDrone.Core.MediaFiles
         public List<TrackFile> GetFilesByAlbum(int albumId)
         {
             return _mediaFileRepository.GetFilesByAlbum(albumId);
+        }
+
+        public List<TrackFile> GetFilesByAlbums(List<int> albumIds)
+        {
+            return _mediaFileRepository.GetFilesByAlbums(albumIds);
         }
 
         public List<TrackFile> GetFilesByRelease(int releaseId)
