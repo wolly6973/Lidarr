@@ -1,17 +1,18 @@
 import { createAction } from 'redux-actions';
 import { batchActions } from 'redux-batched-actions';
-import { createThunk, handleThunks } from 'Store/thunks';
-import createAjaxRequest from 'Utilities/createAjaxRequest';
-import findSelectedFilters from 'Utilities/Filter/findSelectedFilters';
-import { set, updateServerSideCollection } from './baseActions';
+
 import { filterBuilderTypes, filterBuilderValueTypes, filterTypePredicates, sortDirections } from 'Helpers/Props';
+import { createThunk, handleThunks } from 'Store/thunks';
 import sortByProp from 'Utilities/Array/sortByProp';
+import findSelectedFilters from 'Utilities/Filter/findSelectedFilters';
 import translate from 'Utilities/String/translate';
-import { filterPredicates, filters, sortPredicates } from './artistActions';
+import createAjaxRequest from 'Utilities/createAjaxRequest';
 import createHandleActions from './Creators/createHandleActions';
 import createSetClientSideCollectionFilterReducer from './Creators/Reducers/createSetClientSideCollectionFilterReducer';
 import createSetClientSideCollectionSortReducer from './Creators/Reducers/createSetClientSideCollectionSortReducer';
 import createSetTableOptionReducer from './Creators/Reducers/createSetTableOptionReducer';
+import { filterPredicates, filters, sortPredicates } from './artistActions';
+import { set, updateServerSideCollection } from './baseActions';
 
 //
 // Variables
