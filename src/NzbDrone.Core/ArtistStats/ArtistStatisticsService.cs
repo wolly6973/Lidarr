@@ -34,8 +34,8 @@ namespace NzbDrone.Core.ArtistStats
                                        ICacheManager cacheManager)
         {
             _artistStatisticsRepository = artistStatisticsRepository;
-            _cache = cacheManager.GetCache<List<AlbumStatistics>>(GetType());
-            _artistCache = cacheManager.GetCache<List<ArtistStatistics>>(GetType());
+            _cache = cacheManager.GetCache<List<AlbumStatistics>>(GetType(), "AlbumStatistics");
+            _artistCache = cacheManager.GetCache<List<ArtistStatistics>>(GetType(), "ArtistStatistics");
         }
 
         public List<ArtistStatistics> ArtistStatistics()
