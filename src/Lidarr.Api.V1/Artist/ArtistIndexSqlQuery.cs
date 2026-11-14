@@ -256,6 +256,29 @@ ORDER BY genre", parameters).ToList();
                     continue;
                 }
 
+                var opType = filter.Type ?? "equal";
+                if ((key == "nextAlbum" || key == "lastAlbum" || key == "added") &&
+                    (opType == "inLast" || opType == "notInLast" || opType == "inNext" || opType == "notInNext") &&
+                    filter.Value.ValueKind == JsonValueKind.Object &&
+                    filter.Value.TryGetProperty("time", out var timeUnit) &&
+                    filter.Value.TryGetProperty("value", out var timeAmount) &&
+                    timeAmount.TryGetDouble(out var amount))
+                {
+                    var direction = opType == "inLast" || opType == "notInLast" ? -1 : 1;
+                    var boundary = AddDateOffset(DateTime.UtcNow, timeUnit.GetString(), amount * direction);
+                    var boundaryName = "p" + index++;
+                    parameters.Add(boundaryName, boundary);
+                    var dateExpression = expression;
+                    result.Add(opType switch
+                    {
+                        "inLast" => dateExpression + " > @" + boundaryName + " AND " + dateExpression + " < @now",
+                        "notInLast" => dateExpression + " <= @" + boundaryName,
+                        "inNext" => dateExpression + " > @now AND " + dateExpression + " < @" + boundaryName,
+                        _ => dateExpression + " >= @" + boundaryName
+                    });
+                    continue;
+                }
+
                 var values = filter.Value.ValueKind == JsonValueKind.Array
                     ? filter.Value.EnumerateArray().ToList()
                     : new List<JsonElement> { filter.Value };
@@ -269,6 +292,9 @@ ORDER BY genre", parameters).ToList();
                         JsonValueKind.False => false,
                         JsonValueKind.Number when value.TryGetInt64(out var n) => n,
                         JsonValueKind.Number => value.GetDouble(),
+                        JsonValueKind.String when (key == "nextAlbum" || key == "lastAlbum" || key == "added") &&
+                                                  DateTime.TryParse(value.GetString(), CultureInfo.InvariantCulture,
+                                                      DateTimeStyles.AssumeUniversal, out var date) => date.ToUniversalTime(),
                         JsonValueKind.String => value.GetString(),
                         JsonValueKind.Object when value.TryGetProperty("value", out var v) => v.ToString(),
                         _ => value.ToString()
@@ -327,9 +353,9 @@ ORDER BY genre", parameters).ToList();
                 "trackCount" => "b.\"TotalTrackCount\"",
                 "path" => "b.\"Path\"",
                 "sizeOnDisk" => "b.\"SizeOnDisk\"",
-                "genres" => "b.\"Genres\"::text",
-                "ratings" => "b.\"Ratings\"::text",
-                "tags" => "b.\"Tags\"::text",
+                "genres" => "(SELECT string_agg(g, ', ' ORDER BY lower(g)) FROM jsonb_array_elements_text(COALESCE(b.\"Genres\"::jsonb, '[]'::jsonb)) g)",
+                "ratings" => "COALESCE((b.\"Ratings\"::jsonb ->> 'Value')::numeric, 0)",
+                "tags" => "(SELECT string_agg(t::text, ',' ORDER BY t) FROM unnest(COALESCE(b.\"Tags\", ARRAY[]::integer[])) t)",
                 _ => "b.\"SortName\""
             };
         }
@@ -360,6 +386,20 @@ ORDER BY genre", parameters).ToList();
             {
                 throw new ArgumentException("The artist index filters query parameter must be a JSON array.");
             }
+        }
+
+        private static DateTime AddDateOffset(DateTime date, string unit, double value)
+        {
+            return unit switch
+            {
+                "minute" or "minutes" => date.AddMinutes(value),
+                "hour" or "hours" => date.AddHours(value),
+                "day" or "days" => date.AddDays(value),
+                "week" or "weeks" => date.AddDays(value * 7),
+                "month" or "months" => date.AddMonths((int)value),
+                "year" or "years" => date.AddYears((int)value),
+                _ => date
+            };
         }
 
         private static bool ReadBool(JsonElement value)
