@@ -7,6 +7,7 @@ import sortByProp from 'Utilities/Array/sortByProp';
 import findSelectedFilters from 'Utilities/Filter/findSelectedFilters';
 import translate from 'Utilities/String/translate';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
+
 import createHandleActions from './Creators/createHandleActions';
 import createSetClientSideCollectionFilterReducer from './Creators/Reducers/createSetClientSideCollectionFilterReducer';
 import createSetClientSideCollectionSortReducer from './Creators/Reducers/createSetClientSideCollectionSortReducer';
