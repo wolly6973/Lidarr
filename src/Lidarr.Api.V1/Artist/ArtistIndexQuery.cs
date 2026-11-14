@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using Lidarr.Http;
 using NzbDrone.Core.Datastore;
+using NzbDrone.Core.Music;
 
 namespace Lidarr.Api.V1.Artist
 {
