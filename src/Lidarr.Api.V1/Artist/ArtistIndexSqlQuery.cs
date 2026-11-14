@@ -50,13 +50,6 @@ namespace Lidarr.Api.V1.Artist
     // only for the requested page.
     public static class ArtistIndexSqlQuery
     {
-        private static readonly HashSet<string> SortKeys = new(StringComparer.OrdinalIgnoreCase)
-        {
-            "status", "sortName", "artistType", "qualityProfileId", "metadataProfileId",
-            "monitorNewItems", "nextAlbum", "lastAlbum", "added", "albumCount",
-            "trackProgress", "trackCount", "path", "sizeOnDisk", "genres", "ratings", "tags"
-        };
-
         private const string BaseCtes = @"
 WITH track_album AS (
     SELECT a.""Id"" AS ""ArtistId"", al.""Id"" AS ""AlbumId"",
@@ -114,6 +107,13 @@ artist_base AS (
     LEFT JOIN artist_dates d ON d.""ArtistId"" = a.""Id""
 )";
 
+        private static readonly HashSet<string> SortKeys = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "status", "sortName", "artistType", "qualityProfileId", "metadataProfileId",
+            "monitorNewItems", "nextAlbum", "lastAlbum", "added", "albumCount",
+            "trackProgress", "trackCount", "path", "sizeOnDisk", "genres", "ratings", "tags"
+        };
+
         public static ArtistIndexSqlResult Execute(IMainDatabase database, ArtistIndexPagingRequestResource request)
         {
             var now = DateTime.UtcNow;
@@ -134,8 +134,8 @@ artist_base AS (
             }
             order += ", b.\"Id\" ASC";
 
-            var page = Math.Max(1, request.Page);
-            var pageSize = Math.Clamp(request.PageSize, 1, 500);
+            var page = Math.Max(1, request.Page ?? 1);
+            var pageSize = Math.Clamp(request.PageSize ?? 50, 1, 500);
             var sql = BaseCtes + @",
 matched AS (SELECT b.* FROM artist_base b" + where + @")
 SELECT b.""Id"", b.""SortName"",
@@ -391,4 +391,3 @@ ORDER BY genres.genre").ToList();
                    (value.ValueKind == JsonValueKind.String && bool.TryParse(value.GetString(), out var parsed) && parsed);
         }
     }
-}
