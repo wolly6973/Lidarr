@@ -97,7 +97,7 @@ namespace Lidarr.Api.V1.Artist
                 MatchingArtists = ordered.Select(x => new ArtistIndexMatchingArtistResource
                 {
                     Id = x.Id,
-                    SortName = x.SortName
+                    SortName = x.SortName ?? string.Empty
                 }).ToList(),
                 Genres = allArtists.SelectMany(x => x.Genres ?? new List<string>())
                     .Distinct(StringComparer.OrdinalIgnoreCase)
