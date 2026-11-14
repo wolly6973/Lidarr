@@ -7,6 +7,21 @@ import Column from 'Components/Table/Column';
 import SortDirection from 'Helpers/Props/SortDirection';
 import { Filter, FilterBuilderProp } from './AppState';
 
+export interface ArtistIndexSummary {
+  artistCount: number;
+  ended: number;
+  continuing: number;
+  monitored: number;
+  trackCount: number;
+  trackFileCount: number;
+  sizeOnDisk: number;
+}
+
+export interface ArtistIndexMatchingArtist {
+  id: number;
+  sortName: string;
+}
+
 export interface ArtistIndexAppState {
   sortKey: string;
   sortDirection: SortDirection;
@@ -14,6 +29,10 @@ export interface ArtistIndexAppState {
   pageSize: number;
   totalPages: number;
   totalRecords: number;
+  totalArtistCount: number;
+  matchingArtists: ArtistIndexMatchingArtist[];
+  genres: string[];
+  summary: ArtistIndexSummary;
   selectableItems: { id: number }[];
   secondarySortKey: string;
   secondarySortDirection: SortDirection;
