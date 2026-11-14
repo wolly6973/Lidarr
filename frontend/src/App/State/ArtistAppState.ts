@@ -14,6 +14,7 @@ export interface ArtistIndexAppState {
   pageSize: number;
   totalPages: number;
   totalRecords: number;
+  selectableItems: { id: number }[];
   secondarySortKey: string;
   secondarySortDirection: SortDirection;
   view: string;
