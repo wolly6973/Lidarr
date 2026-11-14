@@ -36,6 +36,7 @@ namespace Lidarr.Api.V1.Artist
     public sealed class ArtistIndexSqlResult
     {
         public int TotalArtistCount { get; set; }
+        public string SortKey { get; set; }
         public List<int> PageIds { get; set; } = new();
         public List<ArtistIndexMatchingArtistResource> MatchingArtists { get; set; } = new();
         public List<string> Genres { get; set; } = new();
@@ -175,6 +176,7 @@ FROM matched";
             var result = new ArtistIndexSqlResult
             {
                 TotalArtistCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM \"Artists\""),
+                SortKey = primarySort,
                 TotalRecords = summary.ArtistCount,
                 PageIds = rows.Select(x => x.Id).ToList(),
                 MatchingArtists = new List<ArtistIndexMatchingArtistResource>(),
@@ -354,9 +356,9 @@ ORDER BY genres.genre").ToList();
                 "trackCount" => "b.\"TotalTrackCount\"",
                 "path" => "b.\"Path\"",
                 "sizeOnDisk" => "b.\"SizeOnDisk\"",
-                "genres" => "(SELECT string_agg(g, ', ' ORDER BY lower(g)) FROM jsonb_array_elements_text(COALESCE(b.\"Genres\"::jsonb, '[]'::jsonb)) AS genres(genre))",
+                "genres" => "(SELECT string_agg(genres.genre, ', ' ORDER BY lower(genres.genre)) FROM jsonb_array_elements_text(COALESCE(b.\"Genres\"::jsonb, '[]'::jsonb)) AS genres(genre))",
                 "ratings" => "COALESCE((b.\"Ratings\"::jsonb ->> 'Value')::numeric, 0)",
-                "tags" => "(SELECT string_agg(t::text, ',' ORDER BY t) FROM unnest(COALESCE(b.\"Tags\", ARRAY[]::integer[])) t)",
+                "tags" => "(SELECT string_agg(tags.tag_id::text, ',' ORDER BY tags.tag_id) FROM unnest(COALESCE(b.\"Tags\", ARRAY[]::integer[])) AS tags(tag_id))",
                 _ => "b.\"SortName\""
             };
         }
