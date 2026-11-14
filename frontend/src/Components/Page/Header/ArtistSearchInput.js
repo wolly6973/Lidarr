@@ -35,8 +35,24 @@ class ArtistSearchInput extends Component {
 
   componentDidUpdate(prevProps) {
     if (!prevProps.isArtistPopulated && this.props.isArtistPopulated && this.state.value) {
-      this.setState({ loading: true });
-      this.requestSuggestions(this.state.value);
+      this.requestSuggestions.cancel();
+
+      if (this._worker) {
+        this._worker.removeEventListener('message', this.onSuggestionsReceived, false);
+        this._worker.terminate();
+        this._worker = null;
+      }
+
+      this.setState({
+        loading: true,
+        requestValue: this.state.value,
+        requestLoading: true
+      }, () => {
+        this.getWorker().postMessage({
+          value: this.state.value,
+          artists: this.props.artists
+        });
+      });
     }
   }
 
