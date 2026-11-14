@@ -1,5 +1,6 @@
 import { createAction } from 'redux-actions';
 import { batchActions } from 'redux-batched-actions';
+
 import { filterBuilderTypes, filterBuilderValueTypes, filterTypePredicates, sortDirections } from 'Helpers/Props';
 import { createThunk, handleThunks } from 'Store/thunks';
 import sortByProp from 'Utilities/Array/sortByProp';
