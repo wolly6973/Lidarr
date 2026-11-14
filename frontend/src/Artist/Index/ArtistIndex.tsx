@@ -125,7 +125,7 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
 
   useEffect(() => {
     dispatch(fetchArtistIndex({}));
-  }, [artistItems, dispatch]);
+  }, [artistItems, customFilters, dispatch]);
 
   const onRssSyncPress = useCallback(() => {
     dispatch(
