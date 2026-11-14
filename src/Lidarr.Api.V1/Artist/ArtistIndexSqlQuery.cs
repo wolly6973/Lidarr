@@ -227,7 +227,7 @@ ORDER BY genres.genre").ToList();
                     "sizeOnDisk" => "b.\"SizeOnDisk\"",
                     "sortName" => "COALESCE(b.\"SortName\", '')",
                     "artistType" => "COALESCE(b.\"Type\", '')",
-                    "ratings" => "COALESCE((b.\"Ratings\"::jsonb ->> 'Value')::numeric, 0) * 10",
+                    "ratings" => "COALESCE((b.\"Ratings\"::jsonb ->> 'Value')::numeric, (b.\"Ratings\"::jsonb ->> 'value')::numeric, 0) * 10",
                     "genres" => "EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(b.\"Genres\"::jsonb, '[]'::jsonb)) AS genres(genre) WHERE lower(genres.genre) = lower(@p" + index + "))",
                     "tags" => "@p" + index + " = ANY(COALESCE(b.\"Tags\", ARRAY[]::integer[]))",
                     _ => null
@@ -324,7 +324,7 @@ ORDER BY genres.genre").ToList();
             {
                 "status" => "(CASE WHEN b.\"Monitored\" THEN 2 ELSE 0 END + CASE WHEN b.\"Status\" <> 1 THEN 1 ELSE 0 END)",
                 "sortName" => "b.\"SortName\"",
-                "artistType" => "b.\"Type\"",
+                "artistType" => "COALESCE(b.\"Type\", '')",
                 "qualityProfileId" => "b.\"QualityProfileId\"",
                 "metadataProfileId" => "b.\"MetadataProfileId\"",
                 "monitorNewItems" => "CASE b.\"MonitorNewItems\" WHEN 0 THEN 0 WHEN 2 THEN 1 WHEN 1 THEN 2 ELSE b.\"MonitorNewItems\" END",
@@ -334,11 +334,11 @@ ORDER BY genres.genre").ToList();
                 "albumCount" => "b.\"AlbumCount\"",
                 "trackProgress" => "(CASE WHEN b.\"TrackCount\" = 0 THEN 100.0 ELSE b.\"TrackFileCount\" * 100.0 / b.\"TrackCount\" END + b.\"TrackCount\" / 1000000.0)",
                 "trackCount" => "b.\"TotalTrackCount\"",
-                "path" => "b.\"Path\"",
+                "path" => "COALESCE(b.\"Path\", '')",
                 "sizeOnDisk" => "b.\"SizeOnDisk\"",
-                "genres" => "(SELECT string_agg(genres.genre, ', ' ORDER BY lower(genres.genre)) FROM jsonb_array_elements_text(COALESCE(b.\"Genres\"::jsonb, '[]'::jsonb)) AS genres(genre))",
+                "genres" => "COALESCE((SELECT string_agg(genres.genre, ', ' ORDER BY lower(genres.genre)) FROM jsonb_array_elements_text(COALESCE(b.\"Genres\"::jsonb, '[]'::jsonb)) AS genres(genre)), '')",
                 "ratings" => "COALESCE((b.\"Ratings\"::jsonb ->> 'Value')::numeric, 0)",
-                "tags" => "(SELECT string_agg(tags.tag_id::text, ',' ORDER BY tags.tag_id) FROM unnest(COALESCE(b.\"Tags\", ARRAY[]::integer[])) AS tags(tag_id))",
+                "tags" => "COALESCE((SELECT string_agg(tags.tag_id::text, ',' ORDER BY tags.tag_id) FROM unnest(COALESCE(b.\"Tags\", ARRAY[]::integer[])) AS tags(tag_id)), '')",
                 _ => "b.\"SortName\""
             };
         }
