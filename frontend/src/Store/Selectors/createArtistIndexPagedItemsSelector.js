@@ -4,7 +4,8 @@ function createArtistIndexPagedItemsSelector() {
   return createSelector(
     (state) => state.artistIndex,
     (state) => state.customFilters.items,
-    (artistIndex, allCustomFilters) => {
+    (state) => state.artist.items.length,
+    (artistIndex, allCustomFilters, totalItems) => {
       const customFilters = allCustomFilters.filter((customFilter) => {
         return customFilter.type === 'artistIndex' || customFilter.type === 'artist';
       });
@@ -12,7 +13,7 @@ function createArtistIndexPagedItemsSelector() {
       return {
         ...artistIndex,
         customFilters,
-        totalItems: artistIndex.totalRecords || 0,
+        totalItems,
         selectableItems: (artistIndex.matchingIds || []).map((id) => ({ id })),
         items: (artistIndex.items || []).map((artist) => ({
           id: artist.id,
