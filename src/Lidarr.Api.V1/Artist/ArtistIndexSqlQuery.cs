@@ -281,7 +281,7 @@ ORDER BY genres.genre").ToList();
                                                        value.GetString(),
                                                        CultureInfo.InvariantCulture,
                                                        DateTimeStyles.AssumeUniversal,
-                                                       out var date)
+                                                       out var date) => date.ToUniversalTime(),
                         JsonValueKind.String => value.GetString(),
                         JsonValueKind.Object when value.TryGetProperty("value", out var v) => v.ToString(),
                         _ => value.ToString()
@@ -421,3 +421,4 @@ ORDER BY genres.genre").ToList();
                    (value.ValueKind == JsonValueKind.String && bool.TryParse(value.GetString(), out var parsed) && parsed);
         }
     }
+}
