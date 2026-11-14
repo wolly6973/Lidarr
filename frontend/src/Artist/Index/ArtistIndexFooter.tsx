@@ -2,6 +2,7 @@ import classNames from 'classnames';
 import React from 'react';
 import { useSelector } from 'react-redux';
 import { createSelector } from 'reselect';
+import AppState from 'App/State/AppState';
 import { ColorImpairedConsumer } from 'App/ColorImpairedContext';
 import DescriptionList from 'Components/DescriptionList/DescriptionList';
 import DescriptionListItem from 'Components/DescriptionList/DescriptionListItem';
@@ -11,7 +12,7 @@ import styles from './ArtistIndexFooter.css';
 
 function createArtistSelector() {
   return createSelector(
-    (state) => state.artistIndex.summary,
+    (state: AppState) => state.artistIndex.summary,
     (summary) => summary || {
       artistCount: 0,
       ended: 0,
