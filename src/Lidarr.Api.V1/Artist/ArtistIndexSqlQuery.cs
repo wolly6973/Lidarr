@@ -162,13 +162,13 @@ OFFSET @offset LIMIT @limit";
             var rows = connection.Query<ArtistIndexSqlRow>(sql, parameters).ToList();
             var summarySql = BaseCtes + @",
 matched AS (SELECT b.* FROM artist_base b" + where + @")
-SELECT COUNT(*)::integer AS \"ArtistCount\",
-       COUNT(*) FILTER (WHERE \"Status\" = 1)::integer AS \"Ended\",
-       COUNT(*) FILTER (WHERE \"Status\" <> 1)::integer AS \"Continuing\",
-       COUNT(*) FILTER (WHERE \"Monitored\")::integer AS \"Monitored\",
-       COALESCE(SUM(\"TrackCount\"), 0)::bigint AS \"TrackCount\",
-       COALESCE(SUM(\"TrackFileCount\"), 0)::bigint AS \"TrackFileCount\",
-       COALESCE(SUM(\"SizeOnDisk\"), 0)::bigint AS \"SizeOnDisk\"
+SELECT COUNT(*)::integer AS ""ArtistCount"",
+       COUNT(*) FILTER (WHERE ""Status"" = 1)::integer AS ""Ended"",
+       COUNT(*) FILTER (WHERE ""Status"" <> 1)::integer AS ""Continuing"",
+       COUNT(*) FILTER (WHERE ""Monitored"")::integer AS ""Monitored"",
+       COALESCE(SUM(""TrackCount""), 0)::bigint AS ""TrackCount"",
+       COALESCE(SUM(""TrackFileCount""), 0)::bigint AS ""TrackFileCount"",
+       COALESCE(SUM(""SizeOnDisk""), 0)::bigint AS ""SizeOnDisk""
 FROM matched";
             var summary = connection.QuerySingle<ArtistIndexSqlSummary>(summarySql, parameters);
             var result = new ArtistIndexSqlResult
@@ -293,8 +293,8 @@ ORDER BY genre", parameters).ToList();
                     if (op == "endsWith" || op == "notEndsWith") rhs = "'%' || @" + parameter;
                     if (op == "notContains" || op == "notStartsWith" || op == "notEndsWith") comparison = "NOT ILIKE";
                     var clause = expression.Replace("@p" + (index - 1), "@" + parameter) + " " + comparison + " " + rhs;
-                    if (key == "genres") clause = "EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(b.\"Genres\"::jsonb, '[]'::jsonb)) g WHERE lower(g) = lower(@" + parameter + "))";
-                    if (key == "tags") clause = "@" + parameter + " = ANY(COALESCE(b.\"Tags\", ARRAY[]::integer[]))";
+                    if (key == "genres") clause = (op == "notContains" || op == "notEqual" ? "NOT " : string.Empty) + "EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(b.\"Genres\"::jsonb, '[]'::jsonb)) g WHERE lower(g) = lower(@" + parameter + "))";
+                    if (key == "tags") clause = (op == "notContains" || op == "notEqual" ? "NOT " : string.Empty) + "(@" + parameter + " = ANY(COALESCE(b.\"Tags\", ARRAY[]::integer[])))";
                     alternatives.Add(clause);
                 }
 
