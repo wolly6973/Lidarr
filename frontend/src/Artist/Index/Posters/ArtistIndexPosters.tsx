@@ -94,11 +94,15 @@ const Cell: React.FC<GridChildComponentProps<CellItemData>> = ({
   );
 };
 
-function getArtistPosterKey(
-  rowIndex: number,
-  columnIndex: number,
-  data: CellItemData
-) {
+function getArtistPosterKey({
+  rowIndex,
+  columnIndex,
+  data,
+}: {
+  rowIndex: number;
+  columnIndex: number;
+  data: CellItemData;
+}) {
   const index = rowIndex * data.layout.columnCount + columnIndex;
 
   return data.items[index]?.id ?? index;
