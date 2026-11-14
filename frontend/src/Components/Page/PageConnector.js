@@ -51,7 +51,6 @@ const selectAppProps = createSelector(
 );
 
 const selectIsPopulated = createSelector(
-  (state) => state.artist.isPopulated,
   (state) => state.customFilters.isPopulated,
   (state) => state.tags.isPopulated,
   (state) => state.settings.ui.isPopulated,
@@ -63,7 +62,6 @@ const selectIsPopulated = createSelector(
   (state) => state.system.status.isPopulated,
   (state) => state.app.translations.isPopulated,
   (
-    artistsIsPopulated,
     customFiltersIsPopulated,
     tagsIsPopulated,
     uiSettingsIsPopulated,
@@ -76,7 +74,6 @@ const selectIsPopulated = createSelector(
     translationsIsPopulated
   ) => {
     return (
-      artistsIsPopulated &&
       customFiltersIsPopulated &&
       tagsIsPopulated &&
       uiSettingsIsPopulated &&
@@ -117,7 +114,6 @@ const selectErrors = createSelector(
     translationsError
   ) => {
     const hasError = !!(
-      artistsError ||
       customFiltersError ||
       tagsError ||
       uiSettingsError ||
@@ -132,6 +128,7 @@ const selectErrors = createSelector(
 
     return {
       hasError,
+      artistError: artistsError,
       customFiltersError,
       tagsError,
       uiSettingsError,
@@ -154,18 +151,33 @@ function createMapStateToProps() {
     selectAppProps,
     createDimensionsSelector(),
     createSystemStatusSelector(),
+    (state) => state.artist.isPopulated,
+    (state) => state.artist.isFetching,
+    (state, props) => props.location.pathname,
     (
       enableColorImpairedMode,
-      isPopulated,
+      baseIsPopulated,
       errors,
       app,
       dimensions,
-      systemStatus
+      systemStatus,
+      artistIsPopulated,
+      artistIsFetching,
+      pathname
     ) => {
+      const urlBase = window.Lidarr.urlBase || '';
+      const isArtistIndexRoute =
+        pathname === '/' || pathname === urlBase || pathname === `${urlBase}/`;
+      const hasError = errors.hasError || (!isArtistIndexRoute && !!errors.artistError);
+
       return {
         ...app,
         ...errors,
-        isPopulated,
+        hasError,
+        isPopulated: baseIsPopulated && (isArtistIndexRoute || artistIsPopulated),
+        isArtistIndexRoute,
+        artistIsPopulated,
+        artistIsFetching,
         isSmallScreen: dimensions.isSmallScreen,
         authenticationEnabled: systemStatus.authentication !== 'none',
         enableColorImpairedMode
@@ -233,7 +245,9 @@ class PageConnector extends Component {
 
   componentDidMount() {
     if (!this.props.isPopulated) {
-      this.props.dispatchFetchArtist();
+      if (!this.props.isArtistIndexRoute) {
+        this.props.dispatchFetchArtist();
+      }
       this.props.dispatchFetchCustomFilters();
       this.props.dispatchFetchTags();
       this.props.dispatchFetchLanguages();
@@ -244,6 +258,18 @@ class PageConnector extends Component {
       this.props.dispatchFetchUISettings();
       this.props.dispatchFetchStatus();
       this.props.dispatchFetchTranslations();
+    }
+  }
+
+  //
+  componentDidUpdate(prevProps) {
+    if (
+      prevProps.isArtistIndexRoute &&
+      !this.props.isArtistIndexRoute &&
+      !this.props.artistIsPopulated &&
+      !this.props.artistIsFetching
+    ) {
+      this.props.dispatchFetchArtist();
     }
   }
 
@@ -301,6 +327,9 @@ class PageConnector extends Component {
 PageConnector.propTypes = {
   isPopulated: PropTypes.bool.isRequired,
   hasError: PropTypes.bool.isRequired,
+  isArtistIndexRoute: PropTypes.bool.isRequired,
+  artistIsPopulated: PropTypes.bool.isRequired,
+  artistIsFetching: PropTypes.bool.isRequired,
   isSidebarVisible: PropTypes.bool.isRequired,
   dispatchFetchArtist: PropTypes.func.isRequired,
   dispatchFetchCustomFilters: PropTypes.func.isRequired,
