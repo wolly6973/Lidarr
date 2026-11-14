@@ -67,9 +67,9 @@ namespace Lidarr.Api.V1.ManualImport
 
         private List<ManualImportResource> UpdateImportItems(List<ManualImportUpdateResource> resources)
         {
-            var artistIds = resources.Where(x => x.ArtistId.HasValue).Select(x => x.ArtistId.Value).Distinct().ToList();
-            var albumIds = resources.Where(x => x.AlbumId.HasValue).Select(x => x.AlbumId.Value).Distinct().ToList();
-            var releaseIds = resources.Where(x => x.AlbumReleaseId.HasValue).Select(x => x.AlbumReleaseId.Value).Distinct().ToList();
+            var artistIds = resources.Where(x => x.ArtistId > 0).Select(x => x.ArtistId.Value).Distinct().ToList();
+            var albumIds = resources.Where(x => x.AlbumId > 0).Select(x => x.AlbumId.Value).Distinct().ToList();
+            var releaseIds = resources.Where(x => x.AlbumReleaseId > 0).Select(x => x.AlbumReleaseId.Value).Distinct().ToList();
 
             var artists = _artistService.GetArtists(artistIds).ToDictionary(x => x.Id);
             var albums = _albumService.GetAlbums(albumIds).ToDictionary(x => x.Id);
