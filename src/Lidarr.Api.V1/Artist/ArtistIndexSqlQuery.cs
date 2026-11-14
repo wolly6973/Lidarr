@@ -271,8 +271,8 @@ ORDER BY genre", parameters).ToList();
                     if (op == "endsWith" || op == "notEndsWith") rhs = "'%' || @" + parameter;
                     if (op == "notContains" || op == "notStartsWith" || op == "notEndsWith") comparison = "NOT ILIKE";
                     var clause = expression.Replace("@p" + (index - 1), "@" + parameter) + " " + comparison + " " + rhs;
-                    if (key == "genres") clause = "EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(b.\\"Genres\\"::jsonb, '[]'::jsonb)) g WHERE lower(g) = lower(@" + parameter + "))";
-                    if (key == "tags") clause = "@" + parameter + " = ANY(COALESCE(b.\\"Tags\\", ARRAY[]::integer[]))";
+                    if (key == "genres") clause = "EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(b.\"Genres\"::jsonb, '[]'::jsonb)) g WHERE lower(g) = lower(@" + parameter + "))";
+                    if (key == "tags") clause = "@" + parameter + " = ANY(COALESCE(b.\"Tags\", ARRAY[]::integer[]))";
                     alternatives.Add(clause);
                 }
 
