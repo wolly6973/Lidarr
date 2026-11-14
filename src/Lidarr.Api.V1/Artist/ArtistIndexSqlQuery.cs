@@ -136,10 +136,6 @@ artist_base AS (
 
             var page = Math.Max(1, request.Page);
             var pageSize = Math.Clamp(request.PageSize, 1, 500);
-            var pageParameters = new DynamicParameters(filterParameters);
-            pageParameters.Add("offset", (page - 1) * pageSize);
-            pageParameters.Add("limit", pageSize);
-
             var sql = BaseCtes + @",
 matched AS (SELECT b.* FROM artist_base b" + where + @")
 SELECT b.""Id"", b.""SortName"",
