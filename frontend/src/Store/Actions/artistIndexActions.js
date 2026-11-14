@@ -6,10 +6,8 @@ import sortByProp from 'Utilities/Array/sortByProp';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
 import findSelectedFilters from 'Utilities/Filter/findSelectedFilters';
 import translate from 'Utilities/String/translate';
-
 import { filterPredicates, filters, sortPredicates } from './artistActions';
 import { set, updateServerSideCollection } from './baseActions';
-
 import createHandleActions from './Creators/createHandleActions';
 import createSetClientSideCollectionFilterReducer from './Creators/Reducers/createSetClientSideCollectionFilterReducer';
 import createSetClientSideCollectionSortReducer from './Creators/Reducers/createSetClientSideCollectionSortReducer';
