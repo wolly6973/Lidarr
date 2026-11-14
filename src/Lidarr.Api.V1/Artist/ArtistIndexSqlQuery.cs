@@ -132,6 +132,7 @@ artist_base AS (
                 order += ", " + SortExpression(secondarySort) +
                          (request.SecondarySortDirection == SortDirection.Descending ? " DESC" : " ASC");
             }
+
             order += ", b.\"Id\" ASC";
 
             var page = Math.Max(1, request.Page ?? 1);
@@ -276,7 +277,11 @@ ORDER BY genres.genre").ToList();
                         JsonValueKind.Number when value.TryGetInt64(out var n) => n,
                         JsonValueKind.Number => value.GetDouble(),
                         JsonValueKind.String when (key == "nextAlbum" || key == "lastAlbum" || key == "added") &&
-                                                  DateTime.TryParse(value.GetString(), CultureInfo.InvariantCulture,
+                                                   DateTime.TryParse(
+                                                       value.GetString(),
+                                                       CultureInfo.InvariantCulture,
+                                                       DateTimeStyles.AssumeUniversal,
+                                                       out var date)
                                                       DateTimeStyles.AssumeUniversal, out var date) => date.ToUniversalTime(),
                         JsonValueKind.String => value.GetString(),
                         JsonValueKind.Object when value.TryGetProperty("value", out var v) => v.ToString(),
@@ -297,13 +302,39 @@ ORDER BY genres.genre").ToList();
                         _ => "="
                     };
                     var rhs = "@" + parameter;
-                    if (op == "contains" || op == "notContains") rhs = "'%' || @" + parameter + " || '%'";
-                    if (op == "startsWith" || op == "notStartsWith") rhs = "@" + parameter + " || '%'";
-                    if (op == "endsWith" || op == "notEndsWith") rhs = "'%' || @" + parameter;
-                    if (op == "notContains" || op == "notStartsWith" || op == "notEndsWith") comparison = "NOT ILIKE";
+                    if (op == "contains" || op == "notContains")
+                    {
+                        rhs = "'%" || @" + parameter + " || '%'";
+                    }
+
+                    if (op == "startsWith" || op == "notStartsWith")
+                    {
+                        rhs = "@" + parameter + " || '%'";
+                    }
+
+                    if (op == "endsWith" || op == "notEndsWith")
+                    {
+                        rhs = "'%" || @" + parameter;
+                    }
+
+                    if (op == "notContains" || op == "notStartsWith" || op == "notEndsWith")
+                    {
+                        comparison = "NOT ILIKE";
+                    }
+
                     var clause = expression.Replace("@p" + (index - 1), "@" + parameter) + " " + comparison + " " + rhs;
-                    if (key == "genres") clause = (op == "notContains" || op == "notEqual" ? "NOT " : string.Empty) + "EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(b.\"Genres\"::jsonb, '[]'::jsonb)) AS genres(genre) WHERE lower(genres.genre) = lower(@" + parameter + "))";
-                    if (key == "tags") clause = (op == "notContains" || op == "notEqual" ? "NOT " : string.Empty) + "(@" + parameter + " = ANY(COALESCE(b.\"Tags\", ARRAY[]::integer[])))";
+                    if (key == "genres")
+                    {
+                        clause = (op == "notContains" || op == "notEqual" ? "NOT " : string.Empty) +
+                                 "EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(b.\"Genres\"::jsonb, '[]'::jsonb)) AS genres(genre) WHERE lower(genres.genre) = lower(@" + parameter + "))";
+                    }
+
+                    if (key == "tags")
+                    {
+                        clause = (op == "notContains" || op == "notEqual" ? "NOT " : string.Empty) +
+                                 "(@" + parameter + " = ANY(COALESCE(b.\"Tags\", ARRAY[]::integer[])))";
+                    }
+
                     alternatives.Add(clause);
                 }
 
