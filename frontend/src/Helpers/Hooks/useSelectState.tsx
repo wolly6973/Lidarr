@@ -32,7 +32,6 @@ export type SelectAction =
   | {
       type: 'updateItems';
       items: ModelBase[];
-      preserveSelection?: boolean;
     };
 
 export type Dispatch = (action: SelectAction) => void;
@@ -63,33 +62,13 @@ function selectReducer(state: SelectState, action: SelectAction): SelectState {
       return cloneDeep(initialState);
     }
     case 'selectAll': {
-      const pageState = selectAll(
-        getSelectedState(action.items, selectedState),
-        true
-      );
-
       return {
-        ...state,
-        ...pageState,
-        selectedState: {
-          ...selectedState,
-          ...pageState.selectedState,
-        },
+        ...selectAll(selectedState, true),
       };
     }
     case 'unselectAll': {
-      const pageState = selectAll(
-        getSelectedState(action.items, selectedState),
-        false
-      );
-
       return {
-        ...state,
-        ...pageState,
-        selectedState: {
-          ...selectedState,
-          ...pageState.selectedState,
-        },
+        ...selectAll(selectedState, false),
       };
     }
     case 'toggleSelected': {
@@ -106,14 +85,11 @@ function selectReducer(state: SelectState, action: SelectAction): SelectState {
       return result;
     }
     case 'updateItems': {
-      const pageSelectedState = getSelectedState(action.items, selectedState);
-      const nextSelectedState = action.preserveSelection ?
-        { ...selectedState, ...pageSelectedState } :
-        pageSelectedState;
+      const nextSelectedState = getSelectedState(action.items, selectedState);
 
       return {
         ...state,
-        ...areAllSelected(pageSelectedState),
+        ...areAllSelected(nextSelectedState),
         selectedState: nextSelectedState,
       };
     }
