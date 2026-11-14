@@ -203,10 +203,15 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
 
       setJumpToCharacter(character);
     },
-    [filteredItems, page, pageSize, dispatch]
+    [filteredItems, page, pageSize, dispatch, setJumpToCharacter]
   );
 
   useEffect(() => {
+    if (error && pendingJumpToCharacter.current) {
+      pendingJumpToCharacter.current = undefined;
+      return;
+    }
+
     if (
       pendingJumpToCharacter.current &&
       !isFetching &&
@@ -216,7 +221,7 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
       setJumpToCharacter(pendingJumpToCharacter.current.character);
       pendingJumpToCharacter.current = undefined;
     }
-  }, [page, items, isFetching]);
+  }, [page, items, isFetching, error]);
 
   const onScroll = useCallback(
     ({ scrollTop }: { scrollTop: number }) => {
