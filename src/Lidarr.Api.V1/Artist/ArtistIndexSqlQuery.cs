@@ -115,9 +115,9 @@ artist_base AS (
         public static ArtistIndexSqlResult Execute(IMainDatabase database, ArtistIndexPagingRequestResource request)
         {
             var now = DateTime.UtcNow;
-            var parameters = new DynamicParameters();
-            parameters.Add("now", now);
-            var predicates = BuildPredicates(request, parameters);
+            var filterParameters = new DynamicParameters();
+            filterParameters.Add("now", now);
+            var predicates = BuildPredicates(request, filterParameters);
             var where = predicates.Count == 0 ? string.Empty : " WHERE " + string.Join(" AND ", predicates);
             var primarySort = SortKeys.Contains(request.SortKey) ? request.SortKey : "sortName";
             var secondarySort = !string.IsNullOrWhiteSpace(request.SecondarySortKey) &&
@@ -134,8 +134,9 @@ artist_base AS (
 
             var page = Math.Max(1, request.Page);
             var pageSize = Math.Clamp(request.PageSize, 1, 500);
-            parameters.Add("offset", (page - 1) * pageSize);
-            parameters.Add("limit", pageSize);
+            var pageParameters = new DynamicParameters(filterParameters);
+            pageParameters.Add("offset", (page - 1) * pageSize);
+            pageParameters.Add("limit", pageSize);
 
             var sql = BaseCtes + @",
 matched AS (SELECT b.* FROM artist_base b" + where + @"),
@@ -159,7 +160,7 @@ ORDER BY " + order + @"
 OFFSET @offset LIMIT @limit";
 
             using var connection = database.OpenConnection();
-            var rows = connection.Query<ArtistIndexSqlRow>(sql, parameters).ToList();
+            var rows = connection.Query<ArtistIndexSqlRow>(sql, pageParameters).ToList();
             var summarySql = BaseCtes + @",
 matched AS (SELECT b.* FROM artist_base b" + where + @")
 SELECT COUNT(*)::integer AS ""ArtistCount"",
@@ -170,7 +171,7 @@ SELECT COUNT(*)::integer AS ""ArtistCount"",
        COALESCE(SUM(""TrackFileCount""), 0)::bigint AS ""TrackFileCount"",
        COALESCE(SUM(""SizeOnDisk""), 0)::bigint AS ""SizeOnDisk""
 FROM matched";
-            var summary = connection.QuerySingle<ArtistIndexSqlSummary>(summarySql, parameters);
+            var summary = connection.QuerySingle<ArtistIndexSqlSummary>(summarySql, filterParameters);
             var result = new ArtistIndexSqlResult
             {
                 TotalArtistCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM \"Artists\""),
@@ -195,13 +196,13 @@ FROM matched";
 SELECT b.""Id"", b.""SortName""
 FROM artist_base b" + where + @"
 ORDER BY b.""SortName"" NULLS LAST, b.""Id""";
-            result.MatchingArtists = connection.Query<ArtistIndexMatchingArtistResource>(matchingSql, parameters).ToList();
+            result.MatchingArtists = connection.Query<ArtistIndexMatchingArtistResource>(matchingSql, filterParameters).ToList();
             result.Genres = connection.Query<string>(@"
 SELECT DISTINCT genre
 FROM ""ArtistMetadata"" m
 CROSS JOIN LATERAL jsonb_array_elements_text(COALESCE(m.""Genres""::jsonb, '[]'::jsonb)) AS genres(genre)
 WHERE genres.genre IS NOT NULL AND genres.genre <> ''
-ORDER BY genres.genre", parameters).ToList();
+ORDER BY genres.genre").ToList();
 
             return result;
         }
