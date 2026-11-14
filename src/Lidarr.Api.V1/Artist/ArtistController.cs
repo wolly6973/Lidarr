@@ -157,7 +157,7 @@ namespace Lidarr.Api.V1.Artist
 
         [HttpGet("paged")]
         [Produces("application/json")]
-        public PagingResource<ArtistResource> GetPagedArtists([FromQuery] ArtistIndexPagingRequestResource paging)
+        public ArtistIndexPagingResource GetPagedArtists([FromQuery] ArtistIndexPagingRequestResource paging)
         {
             var pagingResource = new PagingResource<ArtistResource>(paging);
             var artists = _artistService.GetAllArtists();
