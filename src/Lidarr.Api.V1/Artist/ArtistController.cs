@@ -163,7 +163,9 @@ namespace Lidarr.Api.V1.Artist
         public ArtistIndexPagingResource GetPagedArtists([FromQuery] ArtistIndexPagingRequestResource paging)
         {
             var query = ArtistIndexSqlQuery.Execute(_mainDatabase, paging);
-            var artistsById = _artistService.GetArtists(query.PageIds).ToDictionary(x => x.Id);
+            var artistsById = query.PageIds.Count == 0
+                ? new Dictionary<int, NzbDrone.Core.Music.Artist>()
+                : _artistService.GetArtists(query.PageIds).ToDictionary(x => x.Id);
             var resources = query.PageIds.Where(artistsById.ContainsKey)
                 .Select(id => artistsById[id].ToResource()).ToList();
 
