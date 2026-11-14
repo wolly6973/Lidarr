@@ -225,7 +225,7 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
   const hasNoArtist = !totalItems;
 
   return (
-    <SelectProvider items={items}>
+    <SelectProvider items={items} preserveSelection>
       <PageContent>
         <PageToolbar>
           <PageToolbarSection>
