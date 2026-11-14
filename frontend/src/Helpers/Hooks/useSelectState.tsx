@@ -32,6 +32,7 @@ export type SelectAction =
   | {
       type: 'updateItems';
       items: ModelBase[];
+      preserveSelection?: boolean;
     };
 
 export type Dispatch = (action: SelectAction) => void;
@@ -85,7 +86,10 @@ function selectReducer(state: SelectState, action: SelectAction): SelectState {
       return result;
     }
     case 'updateItems': {
-      const nextSelectedState = getSelectedState(action.items, selectedState);
+      const pageSelectedState = getSelectedState(action.items, selectedState);
+      const nextSelectedState = action.preserveSelection ?
+        { ...selectedState, ...pageSelectedState } :
+        pageSelectedState;
 
       return {
         ...state,
