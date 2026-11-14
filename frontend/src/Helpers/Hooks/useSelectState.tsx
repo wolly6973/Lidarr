@@ -63,13 +63,33 @@ function selectReducer(state: SelectState, action: SelectAction): SelectState {
       return cloneDeep(initialState);
     }
     case 'selectAll': {
+      const pageState = selectAll(
+        getSelectedState(action.items, selectedState),
+        true
+      );
+
       return {
-        ...selectAll(selectedState, true),
+        ...state,
+        ...pageState,
+        selectedState: {
+          ...selectedState,
+          ...pageState.selectedState,
+        },
       };
     }
     case 'unselectAll': {
+      const pageState = selectAll(
+        getSelectedState(action.items, selectedState),
+        false
+      );
+
       return {
-        ...selectAll(selectedState, false),
+        ...state,
+        ...pageState,
+        selectedState: {
+          ...selectedState,
+          ...pageState.selectedState,
+        },
       };
     }
     case 'toggleSelected': {
@@ -93,7 +113,7 @@ function selectReducer(state: SelectState, action: SelectAction): SelectState {
 
       return {
         ...state,
-        ...areAllSelected(nextSelectedState),
+        ...areAllSelected(pageSelectedState),
         selectedState: nextSelectedState,
       };
     }
