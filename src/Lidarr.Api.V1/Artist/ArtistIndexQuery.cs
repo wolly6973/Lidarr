@@ -16,6 +16,11 @@ namespace Lidarr.Api.V1.Artist
         public SortDirection? SecondarySortDirection { get; set; }
     }
 
+    public class ArtistIndexPagingResource : PagingResource<ArtistResource>
+    {
+        public List<int> MatchingIds { get; set; } = new();
+    }
+
     public class ArtistIndexFilterResource
     {
         public string Key { get; set; }
@@ -32,7 +37,7 @@ namespace Lidarr.Api.V1.Artist
             "trackProgress", "trackCount", "path", "sizeOnDisk", "genres", "ratings", "tags"
         };
 
-        public static PagingResource<ArtistResource> Apply(
+        public static ArtistIndexPagingResource Apply(
             PagingResource<ArtistResource> paging,
             ArtistIndexPagingRequestResource request,
             IEnumerable<ArtistResource> source)
@@ -59,13 +64,14 @@ namespace Lidarr.Api.V1.Artist
             paging.Page = page;
             paging.PageSize = pageSize;
             paging.SortKey = sortKey;
-            return new PagingResource<ArtistResource>
+            return new ArtistIndexPagingResource
             {
                 Page = page,
                 PageSize = pageSize,
                 SortKey = sortKey,
                 SortDirection = paging.SortDirection,
                 TotalRecords = matching.Count,
+                MatchingIds = ordered.Select(x => x.Id).ToList(),
                 Records = ordered.Skip((page - 1) * pageSize).Take(pageSize).ToList()
             };
         }
