@@ -7,7 +7,10 @@ import React, {
 } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { SelectProvider } from 'App/SelectContext';
-import ArtistAppState, { ArtistIndexAppState } from 'App/State/ArtistAppState';
+import ArtistAppState, {
+  ArtistIndexAppState,
+  ArtistIndexMatchingArtist,
+} from 'App/State/ArtistAppState';
 import ClientSideCollectionAppState from 'App/State/ClientSideCollectionAppState';
 import NoArtist from 'Artist/NoArtist';
 import { RSS_SYNC } from 'Commands/commandNames';
@@ -101,7 +104,9 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
   }: ArtistAppState & ArtistIndexAppState & ClientSideCollectionAppState =
     useSelector(createArtistIndexPagedItemsSelector());
 
-  const filteredItems = useSelector(createArtistIndexFilteredNamesSelector());
+  const filteredItems = useSelector(
+    createArtistIndexFilteredNamesSelector()
+  ) as ArtistIndexMatchingArtist[];
   const isRssSyncExecuting = useSelector(
     createCommandExecutingSelector(RSS_SYNC)
   );
@@ -285,17 +290,20 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
 
             <PageToolbarButton
               label="Previous Page"
+              iconName={icons.PAGE_PREVIOUS}
               isDisabled={page <= 1 || isFetching}
               onPress={() => dispatch(fetchArtistIndex({ page: page - 1 }))}
             />
 
             <PageToolbarButton
               label={`Page ${page || 1} of ${totalPages || 1}`}
+              iconName={icons.INFO}
               isDisabled={true}
             />
 
             <PageToolbarButton
               label="Next Page"
+              iconName={icons.PAGE_NEXT}
               isDisabled={page >= totalPages || isFetching}
               onPress={() => dispatch(fetchArtistIndex({ page: page + 1 }))}
             />
