@@ -10,9 +10,9 @@ import {
 
 function createArtistSelector() {
   return createSelector(
-    (state: AppState) => state.artist.items,
-    (artist) => {
-      return artist;
+    (state: AppState) => state.artistIndex.genres,
+    (genres) => {
+      return [{ genres: genres || [] }];
     }
   );
 }
