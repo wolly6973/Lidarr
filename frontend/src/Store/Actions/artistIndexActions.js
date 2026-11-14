@@ -3,9 +3,9 @@ import { batchActions } from 'redux-batched-actions';
 import { filterBuilderTypes, filterBuilderValueTypes, filterTypePredicates, sortDirections } from 'Helpers/Props';
 import { createThunk, handleThunks } from 'Store/thunks';
 import sortByProp from 'Utilities/Array/sortByProp';
+import createAjaxRequest from 'Utilities/createAjaxRequest';
 import findSelectedFilters from 'Utilities/Filter/findSelectedFilters';
 import translate from 'Utilities/String/translate';
-import createAjaxRequest from 'Utilities/createAjaxRequest';
 
 import { filterPredicates, filters, sortPredicates } from './artistActions';
 import { set, updateServerSideCollection } from './baseActions';
