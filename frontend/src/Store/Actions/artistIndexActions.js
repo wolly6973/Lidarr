@@ -404,6 +404,8 @@ export const setArtistOverviewOption = createAction(SET_ARTIST_OVERVIEW_OPTION);
 //
 // Action Handlers
 
+let artistIndexRequestId = 0;
+
 export const actionHandlers = handleThunks({
   [FETCH_ARTIST_INDEX]: (getState, payload, dispatch) => {
     const state = getState();
@@ -427,6 +429,8 @@ export const actionHandlers = handleThunks({
       filters: JSON.stringify(selectedFilters)
     };
 
+    const requestId = ++artistIndexRequestId;
+
     dispatch(set({ section, isFetching: true }));
 
     const promise = createAjaxRequest({
@@ -436,6 +440,10 @@ export const actionHandlers = handleThunks({
     }).request;
 
     promise.done((response) => {
+      if (requestId !== artistIndexRequestId) {
+        return;
+      }
+
       dispatch(batchActions([
         updateServerSideCollection({ section, data: response }),
         set({
@@ -448,6 +456,10 @@ export const actionHandlers = handleThunks({
     });
 
     promise.fail((xhr) => {
+      if (requestId !== artistIndexRequestId) {
+        return;
+      }
+
       dispatch(set({
         section,
         isFetching: false,
