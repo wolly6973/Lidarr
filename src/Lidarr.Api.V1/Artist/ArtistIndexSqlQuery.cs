@@ -186,8 +186,9 @@ FROM artist_base b" + where + @"
 ORDER BY b.""SortName"" NULLS LAST, b.""Id""";
             result.MatchingArtists = connection.Query<ArtistIndexMatchingArtistResource>(matchingSql, filterParameters).ToList();
             result.Genres = connection.Query<string>(@"
-SELECT DISTINCT genre
-FROM ""ArtistMetadata"" m
+SELECT DISTINCT genres.genre
+FROM ""Artists"" a
+INNER JOIN ""ArtistMetadata"" m ON m.""Id"" = a.""ArtistMetadataId""
 CROSS JOIN LATERAL jsonb_array_elements_text(COALESCE(m.""Genres""::jsonb, '[]'::jsonb)) AS genres(genre)
 WHERE genres.genre IS NOT NULL AND genres.genre <> ''
 ORDER BY genres.genre").ToList();
