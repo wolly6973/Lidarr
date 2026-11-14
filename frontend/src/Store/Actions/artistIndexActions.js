@@ -13,7 +13,7 @@ import { set, updateServerSideCollection } from './baseActions';
 import createHandleActions from './Creators/createHandleActions';
 import createSetClientSideCollectionFilterReducer from './Creators/Reducers/createSetClientSideCollectionFilterReducer';
 import createSetClientSideCollectionSortReducer from './Creators/Reducers/createSetClientSideCollectionSortReducer';
-import createSetTableOptionReducer from './Creators/createSetTableOptionReducer';
+import createSetTableOptionReducer from './Creators/Reducers/createSetTableOptionReducer';
 
 //
 // Variables
