@@ -140,23 +140,9 @@ artist_base AS (
             pageParameters.Add("limit", pageSize);
 
             var sql = BaseCtes + @",
-matched AS (SELECT b.* FROM artist_base b" + where + @"),
-numbered AS (
-    SELECT m.*,
-           COUNT(*) OVER() AS ""TotalMatches"",
-           COUNT(*) OVER()::integer AS ""ArtistCount"",
-           SUM(CASE WHEN m.""Status"" = 1 THEN 1 ELSE 0 END) OVER()::integer AS ""Ended"",
-           SUM(CASE WHEN m.""Status"" <> 1 THEN 1 ELSE 0 END) OVER()::integer AS ""Continuing"",
-           SUM(CASE WHEN m.""Monitored"" THEN 1 ELSE 0 END) OVER()::integer AS ""MonitoredCount"",
-           SUM(m.""TrackCount"") OVER()::bigint AS ""SummaryTrackCount"",
-           SUM(m.""TrackFileCount"") OVER()::bigint AS ""SummaryTrackFileCount"",
-           SUM(m.""SizeOnDisk"") OVER()::bigint AS ""SummarySizeOnDisk""
-    FROM matched m
-)
-SELECT ""Id"", ""SortName"", ""TotalMatches"", ""ArtistCount"", ""Ended"", ""Continuing"",
-       ""MonitoredCount"" AS ""Monitored"", ""SummaryTrackCount"" AS ""TrackCount"",
-       ""SummaryTrackFileCount"" AS ""TrackFileCount"", ""SummarySizeOnDisk"" AS ""SizeOnDisk""
-FROM numbered b
+matched AS (SELECT b.* FROM artist_base b" + where + @")
+SELECT b.""Id"", b.""SortName""
+FROM matched b
 ORDER BY " + order + @"
 OFFSET @offset LIMIT @limit";
 
