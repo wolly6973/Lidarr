@@ -85,6 +85,7 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
     error,
     totalItems,
     items,
+    selectableItems,
     page,
     totalPages,
     columns,
@@ -225,7 +226,7 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
   const hasNoArtist = !totalItems;
 
   return (
-    <SelectProvider items={items} preserveSelection>
+    <SelectProvider items={selectableItems}>
       <PageContent>
         <PageToolbar>
           <PageToolbarSection>
