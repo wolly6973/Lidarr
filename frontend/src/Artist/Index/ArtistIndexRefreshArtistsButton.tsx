@@ -7,7 +7,7 @@ import { REFRESH_ARTIST } from 'Commands/commandNames';
 import PageToolbarButton from 'Components/Page/Toolbar/PageToolbarButton';
 import { icons } from 'Helpers/Props';
 import { executeCommand } from 'Store/Actions/commandActions';
-import createArtistClientSideCollectionItemsSelector from 'Store/Selectors/createArtistClientSideCollectionItemsSelector';
+import createArtistIndexPagedItemsSelector from 'Store/Selectors/createArtistIndexPagedItemsSelector';
 import createCommandExecutingSelector from 'Store/Selectors/createCommandExecutingSelector';
 import translate from 'Utilities/String/translate';
 import getSelectedIds from 'Utilities/Table/getSelectedIds';
@@ -24,10 +24,10 @@ function ArtistIndexRefreshArtistsButton(
     createCommandExecutingSelector(REFRESH_ARTIST)
   );
   const {
-    items,
+    selectableItems,
     totalItems,
   }: ArtistAppState & ArtistIndexAppState & ClientSideCollectionAppState =
-    useSelector(createArtistClientSideCollectionItemsSelector('artistIndex'));
+    useSelector(createArtistIndexPagedItemsSelector());
 
   const dispatch = useDispatch();
   const { isSelectMode, selectedFilterKey } = props;
@@ -41,7 +41,7 @@ function ArtistIndexRefreshArtistsButton(
   const artistsToRefresh =
     isSelectMode && selectedArtistIds.length > 0
       ? selectedArtistIds
-      : items.map((m) => m.id);
+      : selectableItems.map((m) => m.id);
 
   let refreshLabel = translate('UpdateAll');
 
