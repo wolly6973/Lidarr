@@ -143,7 +143,7 @@ numbered AS (
 SELECT ""Id"", ""SortName"", ""TotalMatches"", ""ArtistCount"", ""Ended"", ""Continuing"",
        ""MonitoredCount"" AS ""Monitored"", ""SummaryTrackCount"" AS ""TrackCount"",
        ""SummaryTrackFileCount"" AS ""TrackFileCount"", ""SummarySizeOnDisk"" AS ""SizeOnDisk""
-FROM numbered
+FROM numbered b
 ORDER BY " + order + @"
 OFFSET @offset LIMIT @limit";
 
@@ -211,7 +211,7 @@ ORDER BY genre", parameters).ToList();
                     "status" => "CASE WHEN b.\"Status\" = 1 THEN 'ended' ELSE 'continuing' END",
                     "qualityProfileId" => "b.\"QualityProfileId\"",
                     "metadataProfileId" => "b.\"MetadataProfileId\"",
-                    "monitorNewItems" => "b.\"MonitorNewItems\"::text",
+                    "monitorNewItems" => "CASE b.\"MonitorNewItems\" WHEN 0 THEN 'all' WHEN 1 THEN 'none' WHEN 2 THEN 'new' ELSE b.\"MonitorNewItems\"::text END",
                     "nextAlbum" => "b.\"NextAlbumDate\"",
                     "lastAlbum" => "b.\"LastAlbumDate\"",
                     "added" => "b.\"Added\"",
@@ -270,8 +270,9 @@ ORDER BY genre", parameters).ToList();
                     if (op == "startsWith" || op == "notStartsWith") rhs = "@" + parameter + " || '%'";
                     if (op == "endsWith" || op == "notEndsWith") rhs = "'%' || @" + parameter;
                     if (op == "notContains" || op == "notStartsWith" || op == "notEndsWith") comparison = "NOT ILIKE";
-                    var clause = expression + " " + comparison + " " + rhs;
-                    if (key == "genres" || key == "tags") clause = expression.Replace("@p" + (index - 1), "@" + parameter);
+                    var clause = expression.Replace("@p" + (index - 1), "@" + parameter) + " " + comparison + " " + rhs;
+                    if (key == "genres") clause = "EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(b.\\"Genres\\"::jsonb, '[]'::jsonb)) g WHERE lower(g) = lower(@" + parameter + "))";
+                    if (key == "tags") clause = "@" + parameter + " = ANY(COALESCE(b.\\"Tags\\", ARRAY[]::integer[]))";
                     alternatives.Add(clause);
                 }
 
