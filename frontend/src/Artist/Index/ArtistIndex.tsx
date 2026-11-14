@@ -34,9 +34,11 @@ import {
 import { executeCommand } from 'Store/Actions/commandActions';
 import { fetchQueueDetails } from 'Store/Actions/queueActions';
 import scrollPositions from 'Store/scrollPositions';
+import createArtistIndexFilteredNamesSelector from 'Store/Selectors/createArtistIndexFilteredNamesSelector';
 import createArtistIndexPagedItemsSelector from 'Store/Selectors/createArtistIndexPagedItemsSelector';
 import createCommandExecutingSelector from 'Store/Selectors/createCommandExecutingSelector';
 import createDimensionsSelector from 'Store/Selectors/createDimensionsSelector';
+import getIndexOfFirstCharacter from 'Utilities/Array/getIndexOfFirstCharacter';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
 import ArtistIndexFooter from './ArtistIndexFooter';
@@ -88,6 +90,7 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
     items,
     selectableItems,
     page,
+    pageSize,
     totalPages,
     columns,
     selectedFilterKey,
@@ -100,12 +103,14 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
     useSelector(createArtistIndexPagedItemsSelector());
 
   const artistItems = useSelector((state: AppState) => state.artist.items);
+  const filteredItems = useSelector(createArtistIndexFilteredNamesSelector());
   const isRssSyncExecuting = useSelector(
     createCommandExecutingSelector(RSS_SYNC)
   );
   const { isSmallScreen } = useSelector(createDimensionsSelector());
   const dispatch = useDispatch();
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const pendingJumpToCharacter = useRef<string | undefined>(undefined);
   const [isOptionsModalOpen, setIsOptionsModalOpen] = useState(false);
   const [jumpToCharacter, setJumpToCharacter] = useState<string | undefined>(
     undefined
@@ -152,6 +157,8 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
 
   const onSortSelect = useCallback(
     (value: string) => {
+      pendingJumpToCharacter.current = undefined;
+      setJumpToCharacter(undefined);
       dispatch(setArtistSort({ sortKey: value }));
       dispatch(fetchArtistIndex({ page: 1 }));
     },
@@ -160,6 +167,8 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
 
   const onFilterSelect = useCallback(
     (value: string) => {
+      pendingJumpToCharacter.current = undefined;
+      setJumpToCharacter(undefined);
       dispatch(setArtistFilter({ selectedFilterKey: value }));
       dispatch(fetchArtistIndex({ page: 1 }));
     },
@@ -176,10 +185,31 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
 
   const onJumpBarItemPress = useCallback(
     (character: string) => {
+      const index = getIndexOfFirstCharacter(filteredItems, character);
+
+      if (index == null) {
+        return;
+      }
+
+      const targetPage = Math.floor(index / pageSize) + 1;
+
+      if (targetPage !== page) {
+        pendingJumpToCharacter.current = character;
+        dispatch(fetchArtistIndex({ page: targetPage }));
+        return;
+      }
+
       setJumpToCharacter(character);
     },
-    [setJumpToCharacter]
+    [filteredItems, page, pageSize, dispatch]
   );
+
+  useEffect(() => {
+    if (pendingJumpToCharacter.current && items.length) {
+      setJumpToCharacter(pendingJumpToCharacter.current);
+      pendingJumpToCharacter.current = undefined;
+    }
+  }, [page, items]);
 
   const onScroll = useCallback(
     ({ scrollTop }: { scrollTop: number }) => {
@@ -197,7 +227,7 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
       };
     }
 
-    const characters = items.reduce((acc: Record<string, number>, item) => {
+    const characters = filteredItems.reduce((acc: Record<string, number>, item) => {
       let char = item.sortName.charAt(0);
 
       if (!isNaN(Number(char))) {
@@ -224,7 +254,7 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
       characters,
       order,
     };
-  }, [items, sortKey, sortDirection]);
+  }, [filteredItems, sortKey, sortDirection]);
   const ViewComponent = useMemo(() => getViewComponent(view), [view]);
 
   const isLoaded = !!(!error && isPopulated && items.length);
