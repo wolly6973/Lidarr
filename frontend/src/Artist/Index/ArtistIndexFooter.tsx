@@ -3,70 +3,40 @@ import React from 'react';
 import { useSelector } from 'react-redux';
 import { createSelector } from 'reselect';
 import { ColorImpairedConsumer } from 'App/ColorImpairedContext';
-import ArtistAppState from 'App/State/ArtistAppState';
+import AppState from 'App/State/AppState';
 import DescriptionList from 'Components/DescriptionList/DescriptionList';
 import DescriptionListItem from 'Components/DescriptionList/DescriptionListItem';
-import createClientSideCollectionSelector from 'Store/Selectors/createClientSideCollectionSelector';
-import createDeepEqualSelector from 'Store/Selectors/createDeepEqualSelector';
 import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
 import styles from './ArtistIndexFooter.css';
 
-function createUnoptimizedSelector() {
-  return createSelector(
-    createClientSideCollectionSelector('artist', 'artistIndex'),
-    (artist: ArtistAppState) => {
-      return artist.items.map((s) => {
-        const { monitored, status, statistics } = s;
-
-        return {
-          monitored,
-          status,
-          statistics,
-        };
-      });
-    }
-  );
-}
-
 function createArtistSelector() {
-  return createDeepEqualSelector(
-    createUnoptimizedSelector(),
-    (artist) => artist
+  return createSelector(
+    (state: AppState) => state.artistIndex.summary,
+    (summary) =>
+      summary || {
+        artistCount: 0,
+        ended: 0,
+        continuing: 0,
+        monitored: 0,
+        trackCount: 0,
+        trackFileCount: 0,
+        sizeOnDisk: 0,
+      }
   );
 }
 
 export default function ArtistIndexFooter() {
   const artist = useSelector(createArtistSelector());
-  const count = artist.length;
-  let tracks = 0;
-  let trackFiles = 0;
-  let ended = 0;
-  let continuing = 0;
-  let monitored = 0;
-  let totalFileSize = 0;
-
-  artist.forEach((a) => {
-    const { statistics = { trackCount: 0, trackFileCount: 0, sizeOnDisk: 0 } } =
-      a;
-
-    const { trackCount = 0, trackFileCount = 0, sizeOnDisk = 0 } = statistics;
-
-    tracks += trackCount;
-    trackFiles += trackFileCount;
-
-    if (a.status === 'ended') {
-      ended++;
-    } else {
-      continuing++;
-    }
-
-    if (a.monitored) {
-      monitored++;
-    }
-
-    totalFileSize += sizeOnDisk;
-  });
+  const {
+    artistCount: count,
+    trackCount: tracks,
+    trackFileCount: trackFiles,
+    ended,
+    continuing,
+    monitored,
+    sizeOnDisk: totalFileSize,
+  } = artist;
 
   return (
     <ColorImpairedConsumer>

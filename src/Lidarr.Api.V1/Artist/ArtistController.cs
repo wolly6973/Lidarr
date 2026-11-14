@@ -9,6 +9,7 @@ using Lidarr.Http.REST.Attributes;
 using Microsoft.AspNetCore.Mvc;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.ArtistStats;
+using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Datastore.Events;
 using NzbDrone.Core.MediaCover;
 using NzbDrone.Core.MediaFiles;
@@ -39,6 +40,7 @@ namespace Lidarr.Api.V1.Artist
                                 IHandle<MediaCoversUpdatedEvent>
     {
         private readonly IArtistService _artistService;
+        private readonly IMainDatabase _mainDatabase;
         private readonly IAlbumService _albumService;
         private readonly IAddArtistService _addArtistService;
         private readonly IArtistStatisticsService _artistStatisticsService;
@@ -48,6 +50,7 @@ namespace Lidarr.Api.V1.Artist
 
         public ArtistController(IBroadcastSignalRMessage signalRBroadcaster,
                             IArtistService artistService,
+                            IMainDatabase mainDatabase,
                             IAlbumService albumService,
                             IAddArtistService addArtistService,
                             IArtistStatisticsService artistStatisticsService,
@@ -68,6 +71,7 @@ namespace Lidarr.Api.V1.Artist
             : base(signalRBroadcaster)
         {
             _artistService = artistService;
+            _mainDatabase = mainDatabase;
             _albumService = albumService;
             _addArtistService = addArtistService;
             _artistStatisticsService = artistStatisticsService;
@@ -152,6 +156,41 @@ namespace Lidarr.Api.V1.Artist
 
             // PopulateAlternateTitles(seriesResources);
             return artistsResources;
+        }
+
+        [HttpGet("paged")]
+        [Produces("application/json")]
+        public ArtistIndexPagingResource GetPagedArtists([FromQuery] ArtistIndexPagingRequestResource paging)
+        {
+            var query = ArtistIndexSqlQuery.Execute(_mainDatabase, paging);
+            var artistsById = query.PageIds.Count == 0
+                ? new Dictionary<int, NzbDrone.Core.Music.Artist>()
+                : _artistService.GetArtists(query.PageIds).ToDictionary(x => x.Id);
+            var resources = query.PageIds.Where(artistsById.ContainsKey)
+                .Select(id => artistsById[id].ToResource()).ToList();
+
+            MapCoversToLocal(resources.ToArray());
+            LinkNextPreviousAlbums(resources.ToArray());
+
+            var pageIds = query.PageIds;
+            var artistStats = _artistStatisticsService.ArtistStatistics(pageIds)
+                .ToDictionary(x => x.ArtistId);
+            LinkArtistStatistics(resources, artistStats);
+            resources.ForEach(LinkRootFolderPath);
+
+            return new ArtistIndexPagingResource
+            {
+                Page = (byte)Math.Max(1, paging.Page ?? 1),
+                PageSize = (byte)Math.Clamp(paging.PageSize ?? 50, 1, 500),
+                SortKey = query.SortKey,
+                SortDirection = paging.SortDirection ?? SortDirection.Ascending,
+                TotalRecords = query.TotalRecords,
+                TotalArtistCount = query.TotalArtistCount,
+                MatchingArtists = query.MatchingArtists,
+                Genres = query.Genres,
+                Summary = query.Summary,
+                Records = resources
+            };
         }
 
         [RestPostById]

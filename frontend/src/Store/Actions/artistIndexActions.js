@@ -1,8 +1,13 @@
 import { createAction } from 'redux-actions';
+import { batchActions } from 'redux-batched-actions';
 import { filterBuilderTypes, filterBuilderValueTypes, filterTypePredicates, sortDirections } from 'Helpers/Props';
+import { createThunk, handleThunks } from 'Store/thunks';
 import sortByProp from 'Utilities/Array/sortByProp';
+import createAjaxRequest from 'Utilities/createAjaxRequest';
+import findSelectedFilters from 'Utilities/Filter/findSelectedFilters';
 import translate from 'Utilities/String/translate';
 import { filterPredicates, filters, sortPredicates } from './artistActions';
+import { set, updateServerSideCollection } from './baseActions';
 import createHandleActions from './Creators/createHandleActions';
 import createSetClientSideCollectionFilterReducer from './Creators/Reducers/createSetClientSideCollectionFilterReducer';
 import createSetClientSideCollectionSortReducer from './Creators/Reducers/createSetClientSideCollectionSortReducer';
@@ -19,6 +24,26 @@ export const section = 'artistIndex';
 export const defaultState = {
   sortKey: 'sortName',
   sortDirection: sortDirections.ASCENDING,
+  page: 1,
+  pageSize: 50,
+  totalRecords: 0,
+  totalArtistCount: 0,
+  totalPages: 1,
+  matchingArtists: [],
+  genres: [],
+  summary: {
+    artistCount: 0,
+    ended: 0,
+    continuing: 0,
+    monitored: 0,
+    trackCount: 0,
+    trackFileCount: 0,
+    sizeOnDisk: 0
+  },
+  items: [],
+  isFetching: false,
+  isPopulated: false,
+  error: null,
   secondarySortKey: 'sortName',
   secondarySortDirection: sortDirections.ASCENDING,
   view: 'posters',
@@ -367,6 +392,7 @@ export const persistState = [
 //
 // Actions Types
 
+export const FETCH_ARTIST_INDEX = 'artistIndex/fetchArtistIndex';
 export const SET_ARTIST_SORT = 'artistIndex/setArtistSort';
 export const SET_ARTIST_FILTER = 'artistIndex/setArtistFilter';
 export const SET_ARTIST_VIEW = 'artistIndex/setArtistView';
@@ -378,6 +404,7 @@ export const SET_ARTIST_OVERVIEW_OPTION = 'artistIndex/setArtistOverviewOption';
 //
 // Action Creators
 
+export const fetchArtistIndex = createThunk(FETCH_ARTIST_INDEX);
 export const setArtistSort = createAction(SET_ARTIST_SORT);
 export const setArtistFilter = createAction(SET_ARTIST_FILTER);
 export const setArtistView = createAction(SET_ARTIST_VIEW);
@@ -385,6 +412,77 @@ export const setArtistTableOption = createAction(SET_ARTIST_TABLE_OPTION);
 export const setArtistPosterOption = createAction(SET_ARTIST_POSTER_OPTION);
 export const setArtistBannerOption = createAction(SET_ARTIST_BANNER_OPTION);
 export const setArtistOverviewOption = createAction(SET_ARTIST_OVERVIEW_OPTION);
+
+//
+// Action Handlers
+
+let artistIndexRequestId = 0;
+
+export const actionHandlers = handleThunks({
+  [FETCH_ARTIST_INDEX]: (getState, payload, dispatch) => {
+    const state = getState();
+    const indexState = state.artistIndex;
+    const customFilters = state.customFilters.items.filter((customFilter) => {
+      return customFilter.type === section || customFilter.type === 'artist';
+    });
+    const selectedFilters = findSelectedFilters(
+      indexState.selectedFilterKey,
+      indexState.filters,
+      customFilters
+    );
+    const data = {
+      page: payload.page || indexState.page || 1,
+      pageSize: indexState.pageSize,
+      sortKey: indexState.sortKey,
+      sortDirection: indexState.sortDirection,
+      secondarySortKey: indexState.secondarySortKey,
+      secondarySortDirection: indexState.secondarySortDirection,
+      filterKey: indexState.selectedFilterKey,
+      filters: JSON.stringify(selectedFilters)
+    };
+
+    const requestId = ++artistIndexRequestId;
+
+    dispatch(set({ section, isFetching: true }));
+
+    const promise = createAjaxRequest({
+      url: '/artist/paged',
+      data,
+      traditional: true
+    }).request;
+
+    promise.done((response) => {
+      if (requestId !== artistIndexRequestId) {
+        return;
+      }
+
+      dispatch(batchActions([
+        updateServerSideCollection({ section, data: response }),
+        set({
+          section,
+          isFetching: false,
+          isPopulated: true,
+          error: null
+        })
+      ]));
+    });
+
+    promise.fail((xhr) => {
+      if (requestId !== artistIndexRequestId) {
+        return;
+      }
+
+      dispatch(set({
+        section,
+        isFetching: false,
+        isPopulated: false,
+        error: xhr
+      }));
+    });
+  }
+});
+
+//
 
 //
 // Reducers

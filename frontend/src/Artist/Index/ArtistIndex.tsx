@@ -7,7 +7,10 @@ import React, {
 } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { SelectProvider } from 'App/SelectContext';
-import ArtistAppState, { ArtistIndexAppState } from 'App/State/ArtistAppState';
+import ArtistAppState, {
+  ArtistIndexAppState,
+  ArtistIndexMatchingArtist,
+} from 'App/State/ArtistAppState';
 import ClientSideCollectionAppState from 'App/State/ClientSideCollectionAppState';
 import NoArtist from 'Artist/NoArtist';
 import { RSS_SYNC } from 'Commands/commandNames';
@@ -24,6 +27,7 @@ import withScrollPosition from 'Components/withScrollPosition';
 import { align, icons } from 'Helpers/Props';
 import SortDirection from 'Helpers/Props/SortDirection';
 import {
+  fetchArtistIndex,
   setArtistFilter,
   setArtistSort,
   setArtistTableOption,
@@ -32,9 +36,11 @@ import {
 import { executeCommand } from 'Store/Actions/commandActions';
 import { fetchQueueDetails } from 'Store/Actions/queueActions';
 import scrollPositions from 'Store/scrollPositions';
-import createArtistClientSideCollectionItemsSelector from 'Store/Selectors/createArtistClientSideCollectionItemsSelector';
+import createArtistIndexFilteredNamesSelector from 'Store/Selectors/createArtistIndexFilteredNamesSelector';
+import createArtistIndexPagedItemsSelector from 'Store/Selectors/createArtistIndexPagedItemsSelector';
 import createCommandExecutingSelector from 'Store/Selectors/createCommandExecutingSelector';
 import createDimensionsSelector from 'Store/Selectors/createDimensionsSelector';
+import getIndexOfFirstCharacter from 'Utilities/Array/getIndexOfFirstCharacter';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
 import ArtistIndexFooter from './ArtistIndexFooter';
@@ -84,6 +90,10 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
     error,
     totalItems,
     items,
+    selectableItems,
+    page,
+    pageSize,
+    totalPages,
     columns,
     selectedFilterKey,
     filters,
@@ -92,14 +102,20 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
     sortDirection,
     view,
   }: ArtistAppState & ArtistIndexAppState & ClientSideCollectionAppState =
-    useSelector(createArtistClientSideCollectionItemsSelector('artistIndex'));
+    useSelector(createArtistIndexPagedItemsSelector());
 
+  const filteredItems = useSelector(
+    createArtistIndexFilteredNamesSelector()
+  ) as ArtistIndexMatchingArtist[];
   const isRssSyncExecuting = useSelector(
     createCommandExecutingSelector(RSS_SYNC)
   );
   const { isSmallScreen } = useSelector(createDimensionsSelector());
   const dispatch = useDispatch();
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const pendingJumpToCharacter = useRef<
+    { character: string; page: number } | undefined
+  >(undefined);
   const [isOptionsModalOpen, setIsOptionsModalOpen] = useState(false);
   const [jumpToCharacter, setJumpToCharacter] = useState<string | undefined>(
     undefined
@@ -109,6 +125,10 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
   useEffect(() => {
     dispatch(fetchQueueDetails({ all: true }));
   }, [dispatch]);
+
+  useEffect(() => {
+    dispatch(fetchArtistIndex({}));
+  }, [customFilters, dispatch]);
 
   const onRssSyncPress = useCallback(() => {
     dispatch(
@@ -142,14 +162,20 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
 
   const onSortSelect = useCallback(
     (value: string) => {
+      pendingJumpToCharacter.current = undefined;
+      setJumpToCharacter(undefined);
       dispatch(setArtistSort({ sortKey: value }));
+      dispatch(fetchArtistIndex({ page: 1 }));
     },
     [dispatch]
   );
 
   const onFilterSelect = useCallback(
     (value: string) => {
+      pendingJumpToCharacter.current = undefined;
+      setJumpToCharacter(undefined);
       dispatch(setArtistFilter({ selectedFilterKey: value }));
+      dispatch(fetchArtistIndex({ page: 1 }));
     },
     [dispatch]
   );
@@ -164,10 +190,41 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
 
   const onJumpBarItemPress = useCallback(
     (character: string) => {
+      const index = getIndexOfFirstCharacter(filteredItems, character);
+
+      if (index == null) {
+        return;
+      }
+
+      const targetPage = Math.floor(index / pageSize) + 1;
+
+      if (targetPage !== page) {
+        pendingJumpToCharacter.current = { character, page: targetPage };
+        dispatch(fetchArtistIndex({ page: targetPage }));
+        return;
+      }
+
       setJumpToCharacter(character);
     },
-    [setJumpToCharacter]
+    [filteredItems, page, pageSize, dispatch, setJumpToCharacter]
   );
+
+  useEffect(() => {
+    if (error && pendingJumpToCharacter.current) {
+      pendingJumpToCharacter.current = undefined;
+      return;
+    }
+
+    if (
+      pendingJumpToCharacter.current &&
+      !isFetching &&
+      page === pendingJumpToCharacter.current.page &&
+      items.length
+    ) {
+      setJumpToCharacter(pendingJumpToCharacter.current.character);
+      pendingJumpToCharacter.current = undefined;
+    }
+  }, [page, items, isFetching, error]);
 
   const onScroll = useCallback(
     ({ scrollTop }: { scrollTop: number }) => {
@@ -185,21 +242,24 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
       };
     }
 
-    const characters = items.reduce((acc: Record<string, number>, item) => {
-      let char = item.sortName.charAt(0);
+    const characters = filteredItems.reduce(
+      (acc: Record<string, number>, item) => {
+        let char = item.sortName.charAt(0);
 
-      if (!isNaN(Number(char))) {
-        char = '#';
-      }
+        if (!isNaN(Number(char))) {
+          char = '#';
+        }
 
-      if (char in acc) {
-        acc[char] = acc[char] + 1;
-      } else {
-        acc[char] = 1;
-      }
+        if (char in acc) {
+          acc[char] = acc[char] + 1;
+        } else {
+          acc[char] = 1;
+        }
 
-      return acc;
-    }, {});
+        return acc;
+      },
+      {}
+    );
 
     const order = Object.keys(characters).sort();
 
@@ -212,20 +272,40 @@ const ArtistIndex = withScrollPosition((props: ArtistIndexProps) => {
       characters,
       order,
     };
-  }, [items, sortKey, sortDirection]);
+  }, [filteredItems, sortKey, sortDirection]);
   const ViewComponent = useMemo(() => getViewComponent(view), [view]);
 
   const isLoaded = !!(!error && isPopulated && items.length);
   const hasNoArtist = !totalItems;
 
   return (
-    <SelectProvider items={items}>
+    <SelectProvider items={selectableItems}>
       <PageContent>
         <PageToolbar>
           <PageToolbarSection>
             <ArtistIndexRefreshArtistsButton
               isSelectMode={isSelectMode}
               selectedFilterKey={selectedFilterKey}
+            />
+
+            <PageToolbarButton
+              label="Previous Page"
+              iconName={icons.PAGE_PREVIOUS}
+              isDisabled={page <= 1 || isFetching}
+              onPress={() => dispatch(fetchArtistIndex({ page: page - 1 }))}
+            />
+
+            <PageToolbarButton
+              label={`Page ${page || 1} of ${totalPages || 1}`}
+              iconName={icons.INFO}
+              isDisabled={true}
+            />
+
+            <PageToolbarButton
+              label="Next Page"
+              iconName={icons.PAGE_NEXT}
+              isDisabled={page >= totalPages || isFetching}
+              onPress={() => dispatch(fetchArtistIndex({ page: page + 1 }))}
             />
 
             <PageToolbarButton

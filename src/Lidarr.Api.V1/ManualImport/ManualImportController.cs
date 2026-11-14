@@ -67,6 +67,14 @@ namespace Lidarr.Api.V1.ManualImport
 
         private List<ManualImportResource> UpdateImportItems(List<ManualImportUpdateResource> resources)
         {
+            var artistIds = resources.Where(x => x.ArtistId > 0).Select(x => x.ArtistId.Value).Distinct().ToList();
+            var albumIds = resources.Where(x => x.AlbumId > 0).Select(x => x.AlbumId.Value).Distinct().ToList();
+            var releaseIds = resources.Where(x => x.AlbumReleaseId > 0).Select(x => x.AlbumReleaseId.Value).Distinct().ToList();
+
+            var artists = _artistService.GetArtists(artistIds).ToDictionary(x => x.Id);
+            var albums = _albumService.GetAlbums(albumIds).ToDictionary(x => x.Id);
+            var releases = _releaseService.GetReleases(releaseIds).ToDictionary(x => x.Id);
+
             var items = new List<ManualImportItem>();
             foreach (var resource in resources)
             {
@@ -75,9 +83,9 @@ namespace Lidarr.Api.V1.ManualImport
                     Id = resource.Id,
                     Path = resource.Path,
                     Name = resource.Name,
-                    Artist = resource.ArtistId.HasValue ? _artistService.GetArtist(resource.ArtistId.Value) : null,
-                    Album = resource.AlbumId.HasValue ? _albumService.GetAlbum(resource.AlbumId.Value) : null,
-                    Release = resource.AlbumReleaseId.HasValue ? _releaseService.GetRelease(resource.AlbumReleaseId.Value) : null,
+                    Artist = resource.ArtistId.HasValue ? artists.GetValueOrDefault(resource.ArtistId.Value) : null,
+                    Album = resource.AlbumId.HasValue ? albums.GetValueOrDefault(resource.AlbumId.Value) : null,
+                    Release = resource.AlbumReleaseId.HasValue ? releases.GetValueOrDefault(resource.AlbumReleaseId.Value) : null,
                     Quality = resource.Quality,
                     ReleaseGroup = resource.ReleaseGroup,
                     IndexerFlags = resource.IndexerFlags,

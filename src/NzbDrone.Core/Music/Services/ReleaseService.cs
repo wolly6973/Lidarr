@@ -8,6 +8,7 @@ namespace NzbDrone.Core.Music
     public interface IReleaseService
     {
         AlbumRelease GetRelease(int id);
+        List<AlbumRelease> GetReleases(IEnumerable<int> releaseIds);
         AlbumRelease GetReleaseByForeignReleaseId(string foreignReleaseId, bool checkRedirect = false);
         List<AlbumRelease> GetAllReleases();
         void InsertMany(List<AlbumRelease> releases);
@@ -15,6 +16,7 @@ namespace NzbDrone.Core.Music
         void DeleteMany(List<AlbumRelease> releases);
         List<AlbumRelease> GetReleasesForRefresh(int albumId, List<string> foreignReleaseIds);
         List<AlbumRelease> GetReleasesByAlbum(int releaseGroupId);
+        List<AlbumRelease> GetReleasesByAlbums(List<int> albumIds);
         List<AlbumRelease> GetReleasesByRecordingIds(List<string> recordingIds);
         List<AlbumRelease> SetMonitored(AlbumRelease release);
     }
@@ -35,6 +37,11 @@ namespace NzbDrone.Core.Music
         public AlbumRelease GetRelease(int id)
         {
             return _releaseRepository.Get(id);
+        }
+
+        public List<AlbumRelease> GetReleases(IEnumerable<int> releaseIds)
+        {
+            return _releaseRepository.Get(releaseIds).ToList();
         }
 
         public AlbumRelease GetReleaseByForeignReleaseId(string foreignReleaseId, bool checkRedirect = false)
@@ -74,6 +81,11 @@ namespace NzbDrone.Core.Music
         public List<AlbumRelease> GetReleasesByAlbum(int releaseGroupId)
         {
             return _releaseRepository.FindByAlbum(releaseGroupId);
+        }
+
+        public List<AlbumRelease> GetReleasesByAlbums(List<int> albumIds)
+        {
+            return _releaseRepository.FindByAlbums(albumIds);
         }
 
         public List<AlbumRelease> GetReleasesByRecordingIds(List<string> recordingIds)
