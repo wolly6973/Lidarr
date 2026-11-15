@@ -366,6 +366,15 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Manual
                 .Where(x => x > 0)
                 .Distinct()).ToDictionary(x => x.Id);
 
+            // Root-folder membership is independent of the individual file, so resolve it once
+            // per artist instead of reloading all root folders for every imported track.
+            var rootFolders = _rootFolderService.All();
+            var artistsWithRootFolder = artistsById.Values.ToDictionary(
+                artist => artist.Id,
+                artist => rootFolders.Any(rootFolder =>
+                    PathEqualityComparer.Instance.Equals(rootFolder.Path, artist.Path) ||
+                    rootFolder.Path.IsParentPath(artist.Path)));
+
             var imported = new List<ImportResult>();
             var importedTrackedDownload = new List<ManuallyImportedFile>();
             var albumIds = message.Files.GroupBy(e => e.AlbumId).ToList();
@@ -414,7 +423,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Manual
                     };
 
                     var importDecision = new ImportDecision<LocalTrack>(localTrack);
-                    if (_rootFolderService.GetBestRootFolder(artist.Path) == null)
+                    if (!artistsWithRootFolder.GetValueOrDefault(file.ArtistId))
                     {
                         _logger.Warn($"Destination artist folder {artist.Path} not in a Root Folder, skipping import");
                         importDecision.Reject(new Rejection($"Destination artist folder {artist.Path} is not in a Root Folder"));
