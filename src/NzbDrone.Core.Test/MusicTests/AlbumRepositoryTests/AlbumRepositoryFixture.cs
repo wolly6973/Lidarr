@@ -193,7 +193,7 @@ namespace NzbDrone.Core.Test.MusicTests.AlbumRepositoryTests
             var result = _albumRepo.GetAlbumsByArtistMetadataIds(new[] { _artist.ArtistMetadataId });
 
             result.Select(x => x.Id).Should().BeEquivalentTo(new[] { _album.Id, _albumSpecial.Id });
-            _albumRepo.GetAlbumsByArtistMetadataIds(new int[0]).Should().BeEmpty();
+            _albumRepo.GetAlbumsByArtistMetadataIds(Array.Empty<int>()).Should().BeEmpty();
         }
 
         [Test]
