@@ -158,7 +158,7 @@ namespace NzbDrone.Core.MediaFiles
                 if (OsInfo.IsWindows)
                 {
                     var lowerPaths = pathBatch.Select(path => path.ToLowerInvariant()).ToList();
-                    builder.Where(""TrackFiles"."Path" IN @pathBatch OR LOWER("TrackFiles"."Path") IN @lowerPaths",
+                    builder.Where("\"TrackFiles\".\"Path\" IN @pathBatch OR LOWER(\"TrackFiles\".\"Path\") IN @lowerPaths",
                         new { pathBatch, lowerPaths });
                 }
                 else
