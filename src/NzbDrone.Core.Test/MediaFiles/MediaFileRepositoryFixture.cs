@@ -149,6 +149,31 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         [Test]
+        public void get_files_by_paths_should_only_return_requested_files_with_tracks_loaded()
+        {
+            VerifyData();
+
+            var paths = new List<string>
+            {
+                @"C:\Test\Path\Artist\somefile1.flac".AsOsAgnostic(),
+                @"C:\Test\Path\Artist\somefile2.flac".AsOsAgnostic(),
+                @"C:\Test\Path\Artist\missing.flac".AsOsAgnostic()
+            };
+
+            var files = Subject.GetFileWithPath(paths);
+
+            files.Should().HaveCount(2);
+            files.Should().OnlyContain(file => paths.Contains(file.Path));
+            VerifyEagerLoaded(files);
+        }
+
+        [Test]
+        public void get_files_by_empty_path_list_should_return_empty()
+        {
+            Subject.GetFileWithPath(new List<string>()).Should().BeEmpty();
+        }
+
+        [Test]
         public void get_file_by_path()
         {
             VerifyData();
