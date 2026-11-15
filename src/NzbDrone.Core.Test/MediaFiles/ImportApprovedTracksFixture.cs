@@ -215,9 +215,13 @@ namespace NzbDrone.Core.Test.MediaFiles
         [Test]
         public void should_delete_existing_trackfiles_with_the_same_path()
         {
+            var previousFile = Builder<TrackFile>.CreateNew()
+                .With(file => file.Path = _approvedDecisions.First().Item.Path)
+                .Build();
+
             Mocker.GetMock<IMediaFileService>()
-                .Setup(s => s.GetFileWithPath(It.IsAny<string>()))
-                .Returns(Builder<TrackFile>.CreateNew().Build());
+                .Setup(s => s.GetFileWithPath(It.IsAny<List<string>>()))
+                .Returns(new List<TrackFile> { previousFile });
 
             var track = _approvedDecisions.First();
             track.Item.ExistingFile = true;
@@ -225,6 +229,39 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             Mocker.GetMock<IMediaFileService>()
                 .Verify(v => v.Delete(It.IsAny<TrackFile>(), DeleteMediaFileReason.ManualOverride), Times.Once());
+        }
+
+        [Test]
+        public void should_lookup_existing_files_in_one_batch()
+        {
+            var first = _approvedDecisions[0].Item;
+            var second = _approvedDecisions[1].Item;
+            first.ExistingFile = true;
+            second.ExistingFile = true;
+
+            Subject.Import(_approvedDecisions.Take(2).ToList(), false);
+
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(service => service.GetFileWithPath(It.Is<List<string>>(paths => paths.Count == 2)), Times.Once());
+        }
+
+        [Test]
+        public void should_lookup_download_history_once_for_all_files()
+        {
+            var downloadClientItem = new DownloadClientItem
+            {
+                DownloadId = "manual-import-download",
+                DownloadClientInfo = _clientInfo
+            };
+
+            Mocker.GetMock<NzbDrone.Core.History.IHistoryService>()
+                .Setup(service => service.FindByDownloadId(downloadClientItem.DownloadId))
+                .Returns(new List<NzbDrone.Core.History.EntityHistory>());
+
+            Subject.Import(_approvedDecisions, false, downloadClientItem);
+
+            Mocker.GetMock<NzbDrone.Core.History.IHistoryService>()
+                .Verify(service => service.FindByDownloadId(downloadClientItem.DownloadId), Times.Once());
         }
 
         [Test]
