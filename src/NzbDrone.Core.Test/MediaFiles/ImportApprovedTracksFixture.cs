@@ -236,6 +236,7 @@ namespace NzbDrone.Core.Test.MediaFiles
         {
             var first = _approvedDecisions[0].Item;
             var second = _approvedDecisions[1].Item;
+            second.Path = Path.Combine(second.Artist.Path, "Alien Ant Farm - 02 - Movies.mp3");
             first.ExistingFile = true;
             second.ExistingFile = true;
 
