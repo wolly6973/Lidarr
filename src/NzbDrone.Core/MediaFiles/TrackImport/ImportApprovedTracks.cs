@@ -143,6 +143,23 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
             _logger.ProgressInfo($"Importing {qualifiedImports.Count} tracks");
             _logger.Debug($"Importing {qualifiedImports.Count} files. replaceExisting: {replaceExisting}");
 
+            var existingPaths = qualifiedImports
+                .Where(decision => decision.Item.ExistingFile)
+                .Select(decision => decision.Item.Path.CleanFilePath())
+                .Distinct(PathEqualityComparer.Instance)
+                .ToList();
+            var existingFilesByPath = existingPaths.Any()
+                ? _mediaFileService.GetFileWithPath(existingPaths).ToDictionary(file => file.Path, PathEqualityComparer.Instance)
+                : new Dictionary<string, TrackFile>(PathEqualityComparer.Instance);
+
+            var grabHistory = downloadClientItem?.DownloadId.IsNotNullOrWhiteSpace() == true
+                ? _historyService.FindByDownloadId(downloadClientItem.DownloadId)
+                    .OrderByDescending(history => history.Date)
+                    .FirstOrDefault(history => history.EventType == EntityHistoryEventType.Grabbed)
+                : null;
+            var hasDownloadIndexerFlags = Enum.TryParse(grabHistory?.Data.GetValueOrDefault("indexerFlags"), true, out IndexerFlags downloadIndexerFlags);
+
+            var importedTrackIds = new HashSet<int>();
             var filesToAdd = new List<TrackFile>(qualifiedImports.Count);
             var albumReleasesDict = new Dictionary<int, List<AlbumRelease>>(albumDecisions.Count);
             var trackImportedEvents = new List<TrackImportedEvent>(qualifiedImports.Count);
@@ -156,13 +173,15 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
                 try
                 {
                     // check if already imported
-                    if (importResults.SelectMany(r => r.ImportDecision.Item.Tracks)
-                                         .Select(e => e.Id)
-                                         .Intersect(localTrack.Tracks.Select(e => e.Id))
-                                         .Any())
+                    if (localTrack.Tracks.Any(track => importedTrackIds.Contains(track.Id)))
                     {
                         importResults.Add(new ImportResult(importDecision, "Track has already been imported"));
                         continue;
+                    }
+
+                    foreach (var track in localTrack.Tracks)
+                    {
+                        importedTrackIds.Add(track.Id);
                     }
 
                     // cache album releases and set artist to speed up firing the TrackImported events
@@ -203,13 +222,9 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
 
                     if (downloadClientItem?.DownloadId.IsNotNullOrWhiteSpace() == true)
                     {
-                        var grabHistory = _historyService.FindByDownloadId(downloadClientItem.DownloadId)
-                            .OrderByDescending(h => h.Date)
-                            .FirstOrDefault(h => h.EventType == EntityHistoryEventType.Grabbed);
-
-                        if (Enum.TryParse(grabHistory?.Data.GetValueOrDefault("indexerFlags"), true, out IndexerFlags flags))
+                        if (hasDownloadIndexerFlags)
                         {
-                            trackFile.IndexerFlags = flags;
+                            trackFile.IndexerFlags = downloadIndexerFlags;
                         }
                     }
                     else
@@ -243,7 +258,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
                     else
                     {
                         // Delete existing files from the DB mapped to this path
-                        var previousFile = _mediaFileService.GetFileWithPath(trackFile.Path);
+                        existingFilesByPath.TryGetValue(trackFile.Path, out var previousFile);
 
                         if (previousFile != null)
                         {
