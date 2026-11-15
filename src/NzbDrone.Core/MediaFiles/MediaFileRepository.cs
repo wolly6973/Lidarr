@@ -152,8 +152,7 @@ namespace NzbDrone.Core.MediaFiles
             for (var i = 0; i < distinctPaths.Count; i += 500)
             {
                 var pathBatch = distinctPaths.Skip(i).Take(500).ToList();
-                var builder = new SqlBuilder(_database.DatabaseType)
-                    .LeftJoin<TrackFile, Track>((f, t) => f.Id == t.TrackFileId);
+                var builder = Builder();
 
                 if (OsInfo.IsWindows)
                 {
@@ -166,7 +165,7 @@ namespace NzbDrone.Core.MediaFiles
                     builder.Where<TrackFile>(f => pathBatch.Contains(f.Path));
                 }
 
-                _ = _database.QueryJoined<TrackFile, Track>(builder, (file, track) => MapTrack(dict, file, track)).ToList();
+                _ = _database.QueryJoined<TrackFile, Track, Album, Artist, ArtistMetadata>(builder, (file, track, album, artist, metadata) => Map(dict, file, track, album, artist, metadata)).ToList();
             }
 
             return dict.Values
@@ -174,21 +173,5 @@ namespace NzbDrone.Core.MediaFiles
                 .ToList();
         }
 
-        private TrackFile MapTrack(Dictionary<int, TrackFile> dict, TrackFile file, Track track)
-        {
-            if (!dict.TryGetValue(file.Id, out var entry))
-            {
-                entry = file;
-                entry.Tracks = new List<Track>();
-                dict.Add(entry.Id, entry);
-            }
-
-            if (track != null)
-            {
-                entry.Tracks.Value.Add(track);
-            }
-
-            return entry;
-        }
     }
 }
