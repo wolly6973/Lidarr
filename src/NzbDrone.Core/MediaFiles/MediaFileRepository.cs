@@ -172,6 +172,5 @@ namespace NzbDrone.Core.MediaFiles
                 .Join(distinctPaths, file => file.Path, path => path, (file, path) => file, PathEqualityComparer.Instance)
                 .ToList();
         }
-
     }
 }
