@@ -87,6 +87,13 @@ namespace NzbDrone.Core.Test.MediaFiles
             Mocker.GetMock<IMediaFileService>()
                 .Setup(s => s.GetFilesByAlbum(It.IsAny<int>()))
                 .Returns(new List<TrackFile>());
+
+            Mocker.GetMock<IAlbumService>()
+                .Setup(s => s.GetAlbums(It.IsAny<IEnumerable<int>>()))
+                .Returns((IEnumerable<int> albumIds) => albumIds
+                    .Where(id => id == album.Id)
+                    .Select(_ => album)
+                    .ToList());
         }
 
         [Test]
