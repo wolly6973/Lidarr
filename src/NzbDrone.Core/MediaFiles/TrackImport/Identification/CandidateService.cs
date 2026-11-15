@@ -149,7 +149,13 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
         private List<CandidateAlbumRelease> GetDbCandidatesByArtist(LocalAlbumRelease localAlbumRelease, Artist artist, bool includeExisting)
         {
             _logger.Trace("Getting candidates for {0}", artist);
-            return GetDbCandidatesByAlbums(localAlbumRelease, _albumService.GetCandidates(artist.ArtistMetadataId, GetAlbumTag(localAlbumRelease)), includeExisting);
+            return GetDbCandidatesByAlbums(localAlbumRelease, GetPossibleAlbums(localAlbumRelease, artist), includeExisting);
+        }
+
+        private List<Album> GetPossibleAlbums(LocalAlbumRelease localAlbumRelease, Artist artist)
+        {
+            var albumTag = GetAlbumTag(localAlbumRelease);
+            return albumTag.IsNotNullOrWhiteSpace() ? _albumService.GetCandidates(artist.ArtistMetadataId, albumTag) : new List<Album>();
         }
 
         private string GetAlbumTag(LocalAlbumRelease localAlbumRelease)
@@ -191,7 +197,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
                 var va = _artistService.FindById(DistanceCalculator.VariousArtistIds[0]);
                 if (va != null)
                 {
-                    possibleAlbums.AddRange(_albumService.GetCandidates(va.ArtistMetadataId, GetAlbumTag(localAlbumRelease)));
+                    possibleAlbums.AddRange(GetPossibleAlbums(localAlbumRelease, va));
                 }
             }
 
@@ -201,7 +207,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
                 var possibleArtists = _artistService.GetCandidates(artistTag);
                 foreach (var artist in possibleArtists)
                 {
-                    possibleAlbums.AddRange(_albumService.GetCandidates(artist.ArtistMetadataId, GetAlbumTag(localAlbumRelease)));
+                    possibleAlbums.AddRange(GetPossibleAlbums(localAlbumRelease, artist));
                 }
             }
 
