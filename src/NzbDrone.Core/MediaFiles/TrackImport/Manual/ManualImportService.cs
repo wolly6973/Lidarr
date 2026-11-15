@@ -343,7 +343,9 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Manual
 
             item.Quality = decision.Item.Quality;
             item.IndexerFlags = (int)decision.Item.IndexerFlags;
-            item.Size = _diskProvider.GetFileSize(decision.Item.Path);
+
+            // The import decision already captured the file size from IFileInfo.Length.
+            item.Size = decision.Item.Size;
             item.Rejections = decision.Rejections;
             item.Tags = decision.Item.FileTrackInfo;
             item.AdditionalFile = decision.Item.AdditionalFile;
