@@ -149,6 +149,64 @@ namespace NzbDrone.Core.Test.MediaFiles.TrackImport.Identification
         }
 
         [Test]
+        public void get_candidates_for_multiple_artists_should_batch_release_and_existing_file_lookups()
+        {
+            _artist.Id = 501;
+            var secondArtistMetadata = Builder<ArtistMetadata>
+                .CreateNew()
+                .With(x => x.Id = 502)
+                .With(x => x.Name = "artist")
+                .Build();
+
+            var artists = new List<Artist>
+            {
+                Builder<Artist>.CreateNew().With(x => x.ArtistMetadataId = _artist.Id).Build(),
+                Builder<Artist>.CreateNew().With(x => x.ArtistMetadataId = secondArtistMetadata.Id).Build()
+            };
+
+            var local = GivenLocalAlbumRelease();
+            var albums = new List<Album>
+            {
+                Builder<Album>.CreateNew().With(x => x.Id = 101).With(x => x.ArtistMetadata = _artist).Build(),
+                Builder<Album>.CreateNew().With(x => x.Id = 102).With(x => x.ArtistMetadata = secondArtistMetadata).Build()
+            };
+
+            var releases = albums.Select(album => Builder<AlbumRelease>
+                .CreateNew()
+                .With(x => x.AlbumId = album.Id)
+                .With(x => x.Album = album)
+                .Build()).ToList();
+
+            Mocker.GetMock<IArtistService>()
+                .Setup(x => x.GetCandidates("artist"))
+                .Returns(artists);
+
+            Mocker.GetMock<IAlbumService>()
+                .Setup(x => x.GetCandidates(_artist.Id, "album"))
+                .Returns(new List<Album> { albums[0] });
+            Mocker.GetMock<IAlbumService>()
+                .Setup(x => x.GetCandidates(secondArtistMetadata.Id, "album"))
+                .Returns(new List<Album> { albums[1] });
+
+            Mocker.GetMock<IReleaseService>()
+                .Setup(x => x.GetReleasesByAlbums(It.Is<List<int>>(ids => ids.SequenceEqual(new[] { 101, 102 }))))
+                .Returns(releases);
+
+            Mocker.GetMock<IMediaFileService>()
+                .Setup(x => x.GetFilesByAlbums(It.Is<List<int>>(ids => ids.SequenceEqual(new[] { 101, 102 }))))
+                .Returns(new List<TrackFile>());
+
+            var result = Subject.GetDbCandidatesFromTags(local, null, true);
+
+            result.Select(x => x.AlbumRelease.Id).Should().Equal(releases.Select(x => x.Id));
+
+            Mocker.GetMock<IReleaseService>()
+                .Verify(x => x.GetReleasesByAlbums(It.IsAny<List<int>>()), Times.Once);
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(x => x.GetFilesByAlbums(It.IsAny<List<int>>()), Times.Once);
+        }
+
+        [Test]
         public void get_candidates_by_fingerprint_should_not_fail_if_fingerprint_lookup_returned_null()
         {
             Mocker.GetMock<IFingerprintingService>()
