@@ -288,14 +288,20 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
         {
             var watch = System.Diagnostics.Stopwatch.StartNew();
 
-            var releasesMissingTracks = candidateReleases.Where(x => !x.AlbumRelease.Tracks.IsLoaded);
+            var releasesMissingTracks = candidateReleases.Where(x => !x.AlbumRelease.Tracks.IsLoaded).ToList();
+            if (releasesMissingTracks.Count == 0)
+            {
+                return;
+            }
+
             var allTracks = _trackService.GetTracksByReleases(releasesMissingTracks.Select(x => x.AlbumRelease.Id).ToList());
+            var tracksByRelease = allTracks.GroupBy(x => x.AlbumReleaseId).ToDictionary(x => x.Key, x => x.ToList());
 
             _logger.Debug($"Retrieved {allTracks.Count} possible tracks in {watch.ElapsedMilliseconds}ms");
 
             foreach (var release in releasesMissingTracks)
             {
-                release.AlbumRelease.Tracks = allTracks.Where(x => x.AlbumReleaseId == release.AlbumRelease.Id).ToList();
+                release.AlbumRelease.Tracks = tracksByRelease.GetValueOrDefault(release.AlbumRelease.Id) ?? new List<Track>();
             }
         }
 
@@ -314,7 +320,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
                 _logger.Debug("Trying Release {0} [{1}, {2} tracks, {3} existing]", release, release.Title, release.TrackCount, candidateRelease.ExistingTracks.Count);
                 var rwatch = System.Diagnostics.Stopwatch.StartNew();
 
-                var extraTrackPaths = candidateRelease.ExistingTracks.Select(x => x.Path).ToList();
+                var extraTrackPaths = candidateRelease.ExistingTracks.Select(x => x.Path).ToHashSet();
                 var extraTracks = extraTracksOnDisk.Where(x => extraTrackPaths.Contains(x.Path)).ToList();
                 var allLocalTracks = localAlbumRelease.LocalTracks.Concat(extraTracks).DistinctBy(x => x.Path).ToList();
 
