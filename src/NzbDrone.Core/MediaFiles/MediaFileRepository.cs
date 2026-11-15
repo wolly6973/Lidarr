@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NzbDrone.Common;
+using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Music;
@@ -139,33 +140,37 @@ namespace NzbDrone.Core.MediaFiles
 
         public List<TrackFile> GetFileWithPath(List<string> paths)
         {
-            // use more limited join for speed
-            var builder = new SqlBuilder(_database.DatabaseType)
-                .LeftJoin<TrackFile, Track>((f, t) => f.Id == t.TrackFileId);
+            if (paths == null || paths.Count == 0)
+            {
+                return new List<TrackFile>();
+            }
 
+            var distinctPaths = paths.Distinct(PathEqualityComparer.Instance).ToList();
             var dict = new Dictionary<int, TrackFile>();
-            _ = _database.QueryJoined<TrackFile, Track>(builder, (file, track) => MapTrack(dict, file, track)).ToList();
-            var all = dict.Values.ToList();
 
-            var joined = all.Join(paths, x => x.Path, x => x, (file, path) => file, PathEqualityComparer.Instance).ToList();
-            return joined;
-        }
-
-        private TrackFile MapTrack(Dictionary<int, TrackFile> dict, TrackFile file, Track track)
-        {
-            if (!dict.TryGetValue(file.Id, out var entry))
+            // Keep each IN clause comfortably below common database parameter limits.
+            for (var i = 0; i < distinctPaths.Count; i += 500)
             {
-                entry = file;
-                entry.Tracks = new List<Track>();
-                dict.Add(entry.Id, entry);
+                var pathBatch = distinctPaths.Skip(i).Take(500).ToList();
+                var builder = Builder();
+
+                if (OsInfo.IsWindows)
+                {
+                    var lowerPaths = pathBatch.Select(path => path.ToLowerInvariant()).ToList();
+                    builder.Where("\"TrackFiles\".\"Path\" IN @pathBatch OR LOWER(\"TrackFiles\".\"Path\") IN @lowerPaths",
+                        new { pathBatch, lowerPaths });
+                }
+                else
+                {
+                    builder.Where<TrackFile>(f => pathBatch.Contains(f.Path));
+                }
+
+                _ = _database.QueryJoined<TrackFile, Track, Album, Artist, ArtistMetadata>(builder, (file, track, album, artist, metadata) => Map(dict, file, track, album, artist, metadata)).ToList();
             }
 
-            if (track != null)
-            {
-                entry.Tracks.Value.Add(track);
-            }
-
-            return entry;
+            return dict.Values
+                .Join(distinctPaths, file => file.Path, path => path, (file, path) => file, PathEqualityComparer.Instance)
+                .ToList();
         }
     }
 }
