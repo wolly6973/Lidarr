@@ -346,6 +346,12 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
                 .GroupBy(e => e.ImportDecision.Item.Album.Id).ToList();
             var importedAlbumIds = albumImports.Select(group => group.Key).ToList();
             var albumsById = _albumService.GetAlbums(importedAlbumIds).ToDictionary(album => album.Id);
+            var importedTrackFilesByAlbum = allImportedTrackFiles
+                .GroupBy(trackFile => trackFile.AlbumId)
+                .ToDictionary(group => group.Key, group => group.ToList());
+            var oldTrackFilesByAlbum = allOldTrackFiles
+                .GroupBy(trackFile => trackFile.AlbumId)
+                .ToDictionary(group => group.Key, group => group.ToList());
 
             foreach (var albumImport in albumImports)
             {
@@ -355,12 +361,15 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
 
                 if (albumImport.Any(e => e.Errors.Count == 0) && artist != null && album != null)
                 {
+                    importedTrackFilesByAlbum.TryGetValue(album.Id, out var importedTrackFiles);
+                    oldTrackFilesByAlbum.TryGetValue(album.Id, out var oldTrackFiles);
+
                     _eventAggregator.PublishEvent(new AlbumImportedEvent(
                         artist,
                         album,
                         release,
-                        allImportedTrackFiles.Where(s => s.AlbumId == album.Id).ToList(),
-                        allOldTrackFiles.Where(s => s.AlbumId == album.Id).ToList(),
+                        importedTrackFiles ?? new List<TrackFile>(),
+                        oldTrackFiles ?? new List<TrackFile>(),
                         replaceExisting,
                         downloadClientItem));
                 }
