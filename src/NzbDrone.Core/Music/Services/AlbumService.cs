@@ -19,6 +19,7 @@ namespace NzbDrone.Core.Music
         List<Album> GetNextAlbumsByArtistMetadataId(IEnumerable<int> artistMetadataIds);
         List<Album> GetLastAlbumsByArtistMetadataId(IEnumerable<int> artistMetadataIds);
         List<Album> GetAlbumsByArtistMetadataId(int artistMetadataId);
+        List<Album> GetCandidates(IEnumerable<int> artistMetadataIds, string title);
         List<Album> GetAlbumsForRefresh(int artistMetadataId, List<string> foreignIds);
         Album AddAlbum(Album newAlbum, bool doRefresh);
         Album FindById(string foreignId);
@@ -177,7 +178,30 @@ namespace NzbDrone.Core.Music
 
         public List<Album> GetCandidates(int artistMetadataId, string title, int? year)
         {
-            var albums = GetAlbumsByArtistMetadataId(artistMetadataId);
+            return GetCandidates(GetAlbumsByArtistMetadataId(artistMetadataId), title, year);
+        }
+
+        public List<Album> GetCandidates(IEnumerable<int> artistMetadataIds, string title)
+        {
+            var ids = artistMetadataIds.Distinct().ToList();
+            var albumsByArtist = _albumRepository.GetAlbumsByArtistMetadataIds(ids)
+                .GroupBy(x => x.ArtistMetadataId)
+                .ToDictionary(x => x.Key, x => x.ToList());
+            var output = new List<Album>();
+
+            foreach (var artistMetadataId in ids)
+            {
+                if (albumsByArtist.TryGetValue(artistMetadataId, out var albums))
+                {
+                    output.AddRange(GetCandidates(albums, title, null));
+                }
+            }
+
+            return output.DistinctBy(x => x.Id).ToList();
+        }
+
+        private List<Album> GetCandidates(List<Album> albums, string title, int? year)
+        {
             var output = new List<Album>();
 
             foreach (var func in AlbumScoringFunctions(title, title.CleanArtistName()))

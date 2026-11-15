@@ -188,6 +188,15 @@ namespace NzbDrone.Core.Test.MusicTests.AlbumRepositoryTests
         }
 
         [Test]
+        public void get_albums_by_multiple_artist_metadata_ids_should_return_matching_albums()
+        {
+            var result = _albumRepo.GetAlbumsByArtistMetadataIds(new[] { _artist.ArtistMetadataId });
+
+            result.Select(x => x.Id).Should().BeEquivalentTo(new[] { _album.Id, _albumSpecial.Id });
+            _albumRepo.GetAlbumsByArtistMetadataIds(new int[0]).Should().BeEmpty();
+        }
+
+        [Test]
         public void get_next_albums_should_return_next_album()
         {
             GivenMultipleAlbums();

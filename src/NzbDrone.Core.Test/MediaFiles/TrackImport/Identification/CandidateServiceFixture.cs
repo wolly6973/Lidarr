@@ -182,11 +182,8 @@ namespace NzbDrone.Core.Test.MediaFiles.TrackImport.Identification
                 .Returns(artists);
 
             Mocker.GetMock<IAlbumService>()
-                .Setup(x => x.GetCandidates(_artist.Id, "album"))
-                .Returns(new List<Album> { albums[0] });
-            Mocker.GetMock<IAlbumService>()
-                .Setup(x => x.GetCandidates(secondArtistMetadata.Id, "album"))
-                .Returns(new List<Album> { albums[1] });
+                .Setup(x => x.GetCandidates(It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { _artist.Id, secondArtistMetadata.Id })), "album"))
+                .Returns(albums);
 
             Mocker.GetMock<IReleaseService>()
                 .Setup(x => x.GetReleasesByAlbums(It.Is<List<int>>(ids => ids.SequenceEqual(new[] { 101, 102 }))))
@@ -200,6 +197,10 @@ namespace NzbDrone.Core.Test.MediaFiles.TrackImport.Identification
 
             result.Select(x => x.AlbumRelease.Id).Should().Equal(releases.Select(x => x.Id));
 
+            Mocker.GetMock<IAlbumService>()
+                .Verify(x => x.GetCandidates(It.IsAny<IEnumerable<int>>(), "album"), Times.Once);
+            Mocker.GetMock<IAlbumService>()
+                .Verify(x => x.GetCandidates(It.IsAny<int>(), "album"), Times.Never);
             Mocker.GetMock<IReleaseService>()
                 .Verify(x => x.GetReleasesByAlbums(It.IsAny<List<int>>()), Times.Once);
             Mocker.GetMock<IMediaFileService>()

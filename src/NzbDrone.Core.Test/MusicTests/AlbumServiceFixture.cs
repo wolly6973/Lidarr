@@ -44,6 +44,37 @@ namespace NzbDrone.Core.Test.MusicTests.AlbumRepositoryTests
             });
         }
 
+        [Test]
+        public void get_candidates_for_multiple_artists_should_score_each_artists_albums_independently()
+        {
+            var firstAlbum = new Album
+            {
+                Id = 101,
+                ArtistMetadataId = 1,
+                Title = "ANThology",
+                CleanTitle = "anthology"
+            };
+            var secondAlbum = new Album
+            {
+                Id = 102,
+                ArtistMetadataId = 2,
+                Title = "ANThology",
+                CleanTitle = "anthology"
+            };
+
+            Mocker.GetMock<IAlbumRepository>()
+                .Setup(x => x.GetAlbumsByArtistMetadataIds(It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { 1, 2 }))))
+                .Returns(new List<Album> { firstAlbum, secondAlbum });
+
+            var result = Subject.GetCandidates(new[] { 1, 2 }, "ANTholog");
+
+            result.Select(x => x.Id).Should().Equal(101, 102);
+            Mocker.GetMock<IAlbumRepository>()
+                .Verify(x => x.GetAlbumsByArtistMetadataIds(It.IsAny<IEnumerable<int>>()), Times.Once);
+            Mocker.GetMock<IAlbumRepository>()
+                .Verify(x => x.GetAlbumsByArtistMetadataId(It.IsAny<int>()), Times.Never);
+        }
+
         [TestCase("ANTholog", "ANThology")]
         [TestCase("antholoyg", "ANThology")]
         [TestCase("ANThology CD", "ANThology")]

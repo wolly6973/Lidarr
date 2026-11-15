@@ -188,8 +188,8 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
         private List<CandidateAlbumRelease> GetDbCandidates(LocalAlbumRelease localAlbumRelease, bool includeExisting)
         {
             // most general version, nothing has been specified.
-            // collect plausible albums first so releases and existing files can be loaded in batches.
-            var possibleAlbums = new List<Album>();
+            // collect plausible artists first so their albums can be loaded in one query.
+            var possibleArtistMetadataIds = new List<int>();
 
             // check if it looks like VA.
             if (TrackGroupingService.IsVariousArtists(localAlbumRelease.LocalTracks))
@@ -197,19 +197,20 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
                 var va = _artistService.FindById(DistanceCalculator.VariousArtistIds[0]);
                 if (va != null)
                 {
-                    possibleAlbums.AddRange(GetPossibleAlbums(localAlbumRelease, va));
+                    possibleArtistMetadataIds.Add(va.ArtistMetadataId);
                 }
             }
 
             var artistTag = localAlbumRelease.LocalTracks.MostCommon(x => x.FileTrackInfo.ArtistTitle) ?? "";
             if (artistTag.IsNotNullOrWhiteSpace())
             {
-                var possibleArtists = _artistService.GetCandidates(artistTag);
-                foreach (var artist in possibleArtists)
-                {
-                    possibleAlbums.AddRange(GetPossibleAlbums(localAlbumRelease, artist));
-                }
+                possibleArtistMetadataIds.AddRange(_artistService.GetCandidates(artistTag).Select(x => x.ArtistMetadataId));
             }
+
+            var albumTag = GetAlbumTag(localAlbumRelease);
+            var possibleAlbums = albumTag.IsNotNullOrWhiteSpace()
+                ? _albumService.GetCandidates(possibleArtistMetadataIds, albumTag)
+                : new List<Album>();
 
             return GetDbCandidatesByAlbums(localAlbumRelease, possibleAlbums, includeExisting);
         }
