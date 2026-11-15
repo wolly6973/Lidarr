@@ -270,6 +270,17 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         [Test]
+        public void should_publish_album_import_event_with_all_imported_tracks()
+        {
+            Subject.Import(_approvedDecisions, false);
+
+            Mocker.GetMock<IEventAggregator>()
+                .Verify(v => v.PublishEvent(It.Is<AlbumImportedEvent>(e =>
+                    e.ImportedTracks.Count == _approvedDecisions.Count &&
+                    e.OldFiles.Count == 0)), Times.Once());
+        }
+
+        [Test]
         public void should_include_scene_name_with_new_downloads()
         {
             var firstDecision = _approvedDecisions.First();
