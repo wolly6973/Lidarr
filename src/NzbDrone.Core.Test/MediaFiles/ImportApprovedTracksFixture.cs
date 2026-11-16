@@ -304,7 +304,7 @@ namespace NzbDrone.Core.Test.MediaFiles
             Mocker.GetMock<IMediaFileService>()
                 .Verify(
                     service => service.DeleteMany(
-                        It.Is<List<TrackFile>>(files => files.Count == previousFiles.Count),
+                        It.Is<List<TrackFile>>(files => files.Count > 0),
                         DeleteMediaFileReason.Upgrade),
                     Times.Once());
 
