@@ -92,6 +92,10 @@ namespace NzbDrone.Core.Test.MediaFiles
                 .Setup(s => s.GetFileWithPath(It.IsAny<List<string>>()))
                 .Returns(new List<TrackFile>());
 
+            Mocker.GetMock<IMediaFileService>()
+                .Setup(s => s.GetFilesByAlbums(It.IsAny<List<int>>()))
+                .Returns(new List<TrackFile>());
+
             Mocker.GetMock<IAlbumService>()
                 .Setup(s => s.GetAlbums(It.IsAny<IEnumerable<int>>()))
                 .Returns((IEnumerable<int> albumIds) => albumIds
@@ -233,6 +237,43 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             Mocker.GetMock<IMediaFileService>()
                 .Verify(v => v.Delete(It.IsAny<TrackFile>(), DeleteMediaFileReason.ManualOverride), Times.Once());
+        }
+
+        [Test]
+        public void should_lookup_replaced_album_files_in_one_batch()
+        {
+            var firstDecision = _approvedDecisions.First();
+            var secondAlbum = Builder<Album>.CreateNew()
+                .With(album => album.Artist = firstDecision.Item.Artist)
+                .With(album => album.AlbumReleases = new List<AlbumRelease>())
+                .Build();
+            var secondRelease = Builder<AlbumRelease>.CreateNew()
+                .With(release => release.AlbumId = secondAlbum.Id)
+                .Build();
+            secondAlbum.AlbumReleases = new List<AlbumRelease> { secondRelease };
+
+            var secondDecision = new ImportDecision<LocalTrack>(
+                new LocalTrack
+                {
+                    Artist = firstDecision.Item.Artist,
+                    Album = secondAlbum,
+                    Release = secondRelease,
+                    Tracks = new List<Track> { Builder<Track>.CreateNew().Build() },
+                    Path = Path.Combine(firstDecision.Item.Artist.Path, "Alien Ant Farm - 06 - Movies.mp3"),
+                    Quality = firstDecision.Item.Quality,
+                    FileTrackInfo = new ParsedTrackInfo()
+                });
+
+            Subject.Import(new List<ImportDecision<LocalTrack>> { firstDecision, secondDecision }, true);
+
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(service => service.GetFilesByAlbums(It.Is<List<int>>(ids =>
+                    ids.Count == 2 &&
+                    ids.Contains(firstDecision.Item.Album.Id) &&
+                    ids.Contains(secondAlbum.Id))), Times.Once());
+
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(service => service.GetFilesByAlbum(It.IsAny<int>()), Times.Never());
         }
 
         [Test]
