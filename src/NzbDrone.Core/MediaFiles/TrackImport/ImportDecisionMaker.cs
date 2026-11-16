@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using NLog;
@@ -209,7 +208,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
                 rootFolders ??= _rootFolderService.All();
                 var path = release.LocalTracks.First().Path;
                 var rootFolder = rootFolders
-                    .Where(folder => PathEqualityComparer.Instance.Equals(folder.Path, path) || folder.Path.IsParentPath(path))
+                    .Where(folder => folder.Path.PathEquals(path) || folder.Path.IsParentPath(path))
                     .OrderByDescending(folder => folder.Path.Length)
                     .FirstOrDefault();
 
