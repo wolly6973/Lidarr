@@ -267,10 +267,12 @@ namespace NzbDrone.Core.Test.MediaFiles
             Subject.Import(new List<ImportDecision<LocalTrack>> { firstDecision, secondDecision }, true);
 
             Mocker.GetMock<IMediaFileService>()
-                .Verify(service => service.GetFilesByAlbums(It.Is<List<int>>(ids =>
-                    ids.Count == 2 &&
-                    ids.Contains(firstDecision.Item.Album.Id) &&
-                    ids.Contains(secondAlbum.Id))), Times.Once());
+                .Verify(
+                    service => service.GetFilesByAlbums(It.Is<List<int>>(ids =>
+                        ids.Count == 2 &&
+                        ids.Contains(firstDecision.Item.Album.Id) &&
+                        ids.Contains(secondAlbum.Id))),
+                    Times.Once());
 
             Mocker.GetMock<IMediaFileService>()
                 .Verify(service => service.GetFilesByAlbum(It.IsAny<int>()), Times.Never());
