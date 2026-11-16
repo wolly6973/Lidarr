@@ -160,6 +160,58 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         [Test]
+        public void should_reuse_existing_artist_for_multiple_albums()
+        {
+            var remoteArtist = Builder<Artist>.CreateNew()
+                .With(artist => artist.Id = 0)
+                .With(artist => artist.ForeignArtistId = "existing-artist")
+                .With(artist => artist.QualityProfile = new QualityProfile { Items = Qualities.QualityFixture.GetDefaultQualities() })
+                .Build();
+            var dbArtist = Builder<Artist>.CreateNew()
+                .With(artist => artist.Id = 123)
+                .With(artist => artist.ForeignArtistId = remoteArtist.ForeignArtistId)
+                .With(artist => artist.QualityProfile = new QualityProfile { Items = Qualities.QualityFixture.GetDefaultQualities() })
+                .Build();
+
+            var firstDecision = _approvedDecisions.First();
+            firstDecision.Item.Artist = remoteArtist;
+            firstDecision.Item.Album.Artist = remoteArtist;
+            firstDecision.Item.Album.ForeignAlbumId = "existing-album-1";
+
+            var secondAlbum = Builder<Album>.CreateNew()
+                .With(album => album.Artist = remoteArtist)
+                .With(album => album.ForeignAlbumId = "existing-album-2")
+                .Build();
+            var secondRelease = Builder<AlbumRelease>.CreateNew()
+                .With(release => release.AlbumId = secondAlbum.Id)
+                .With(release => release.Monitored = true)
+                .Build();
+            secondAlbum.AlbumReleases = new List<AlbumRelease> { secondRelease };
+            var secondDecision = new ImportDecision<LocalTrack>(
+                new LocalTrack
+                {
+                    Artist = remoteArtist,
+                    Album = secondAlbum,
+                    Release = secondRelease,
+                    Tracks = new List<Track> { Builder<Track>.CreateNew().Build() },
+                    Path = Path.Combine(remoteArtist.Path, "Existing Artist - 06 - Track.mp3"),
+                    Quality = firstDecision.Item.Quality,
+                    FileTrackInfo = new ParsedTrackInfo()
+                });
+
+            Mocker.GetMock<IArtistService>()
+                .Setup(service => service.FindById(remoteArtist.ForeignArtistId))
+                .Returns(dbArtist);
+
+            Subject.Import(new List<ImportDecision<LocalTrack>> { firstDecision, secondDecision }, false);
+
+            Mocker.GetMock<IArtistService>()
+                .Verify(service => service.FindById(remoteArtist.ForeignArtistId), Times.Once());
+            Mocker.GetMock<IAddArtistService>()
+                .Verify(service => service.AddArtist(It.IsAny<Artist>(), false), Times.Never());
+        }
+
+        [Test]
         public void should_not_import_any_if_there_are_no_approved_decisions()
         {
             Subject.Import(_rejectedDecisions, false).Where(i => i.Result == ImportResultType.Imported).Should().BeEmpty();
