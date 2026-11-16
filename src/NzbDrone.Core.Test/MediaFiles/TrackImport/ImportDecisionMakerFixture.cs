@@ -17,8 +17,8 @@ using NzbDrone.Core.Music;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Profiles.Qualities;
 using NzbDrone.Core.Qualities;
-using NzbDrone.Core.Test.Framework;
 using NzbDrone.Core.RootFolders;
+using NzbDrone.Core.Test.Framework;
 using NzbDrone.Test.Common;
 
 namespace NzbDrone.Core.Test.MediaFiles.TrackImport
@@ -395,7 +395,6 @@ namespace NzbDrone.Core.Test.MediaFiles.TrackImport
             decisions.Should().HaveCount(3);
             decisions.First().Rejections.Should().NotBeEmpty();
         }
-
 
         [Test]
         public void should_reuse_root_folders_and_quality_profiles_for_multiple_new_artists()
