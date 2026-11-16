@@ -153,6 +153,8 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
             var releases = _identificationService.Identify(localTracks, idOverrides, config);
 
             var albums = releases.GroupBy(x => x.AlbumRelease?.Album?.Value.ForeignAlbumId);
+            List<RootFolder> rootFolders = null;
+            var qualityProfiles = new Dictionary<int, QualityProfile>();
 
             // group releases that are identified as the same album
             foreach (var album in albums)
@@ -163,7 +165,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
                 {
                     // make sure the appropriate quality profile is set for the release artist
                     // in case it's a new artist
-                    EnsureData(release);
+                    EnsureData(release, ref rootFolders, qualityProfiles);
                     release.NewDownload = config.NewDownload;
 
                     albumDecisions.Add(GetDecision(release, itemInfo.DownloadClientItem));
@@ -197,12 +199,25 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
             return decisions;
         }
 
-        private void EnsureData(LocalAlbumRelease release)
+        private void EnsureData(LocalAlbumRelease release, ref List<RootFolder> rootFolders, Dictionary<int, QualityProfile> qualityProfiles)
         {
             if (release.AlbumRelease != null && release.AlbumRelease.Album.Value.Artist.Value.QualityProfileId == 0)
             {
-                var rootFolder = _rootFolderService.GetBestRootFolder(release.LocalTracks.First().Path);
-                var qualityProfile = _qualityProfileService.Get(rootFolder.DefaultQualityProfileId);
+                // GetBestRootFolder calls All() for every lookup. Reuse one snapshot for this import
+                // decision batch, which is shared by automatic and manual imports.
+                rootFolders ??= _rootFolderService.All();
+                var path = release.LocalTracks.First().Path;
+                var rootFolder = rootFolders
+                    .Where(folder => PathEqualityComparer.Instance.Equals(folder.Path, path) || folder.Path.IsParentPath(path))
+                    .OrderByDescending(folder => folder.Path.Length)
+                    .FirstOrDefault();
+
+                var profileId = rootFolder.DefaultQualityProfileId;
+                if (!qualityProfiles.TryGetValue(profileId, out var qualityProfile))
+                {
+                    qualityProfile = _qualityProfileService.Get(profileId);
+                    qualityProfiles.Add(profileId, qualityProfile);
+                }
 
                 var artist = release.AlbumRelease.Album.Value.Artist.Value;
                 artist.QualityProfileId = qualityProfile.Id;
