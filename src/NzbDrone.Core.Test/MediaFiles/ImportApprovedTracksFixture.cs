@@ -278,6 +278,39 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         [Test]
+        public void should_delete_replaced_album_files_in_one_batch()
+        {
+            var previousFiles = Builder<TrackFile>.CreateListOfSize(2)
+                .All()
+                .With(file => file.Path = Path.Combine(_approvedDecisions.First().Item.Artist.Path, "previous.mp3"))
+                .Build();
+
+            Mocker.GetMock<IMediaFileService>()
+                .Setup(service => service.GetFilesByAlbums(It.IsAny<List<int>>()))
+                .Returns(previousFiles);
+
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(service => service.GetParentFolder(It.IsAny<string>()))
+                .Returns<string>(path => Path.GetDirectoryName(path));
+
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(service => service.FileExists(It.IsAny<string>()))
+                .Returns(false);
+
+            Subject.Import(new List<ImportDecision<LocalTrack>> { _approvedDecisions.First() }, true);
+
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(
+                    service => service.DeleteMany(
+                        It.Is<List<TrackFile>>(files => files.Count == previousFiles.Count),
+                        DeleteMediaFileReason.Upgrade),
+                    Times.Once());
+
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(service => service.Delete(It.IsAny<TrackFile>(), DeleteMediaFileReason.Upgrade), Times.Never());
+        }
+
+        [Test]
         public void should_lookup_existing_files_in_one_batch()
         {
             var first = _approvedDecisions[0].Item;
