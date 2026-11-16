@@ -275,9 +275,11 @@ namespace NzbDrone.Core.Test.MediaFiles
             Subject.Import(_approvedDecisions, false);
 
             Mocker.GetMock<IEventAggregator>()
-                .Verify(v => v.PublishEvent(It.Is<AlbumImportedEvent>(e =>
-                    e.ImportedTracks.Count == _approvedDecisions.Count &&
-                    e.OldFiles.Count == 0)), Times.Once());
+                .Verify(
+                    v => v.PublishEvent(It.Is<AlbumImportedEvent>(e =>
+                        e.ImportedTracks.Count == _approvedDecisions.Count &&
+                        e.OldFiles.Count == 0)),
+                    Times.Once());
         }
 
         [Test]
