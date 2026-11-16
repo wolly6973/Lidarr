@@ -202,6 +202,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
             var filesToAdd = new List<TrackFile>(qualifiedImports.Count);
             var albumReleasesDict = new Dictionary<int, List<AlbumRelease>>(albumDecisions.Count);
             var trackImportedEvents = new List<TrackImportedEvent>(qualifiedImports.Count);
+            var existingFilesToDelete = new List<TrackFile>();
 
             foreach (var importDecision in qualifiedImports.OrderBy(e => e.Item.Tracks.Select(track => track.AbsoluteTrackNumber).MinOrDefault())
                                                            .ThenByDescending(e => e.Item.Size))
@@ -301,7 +302,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
 
                         if (previousFile != null)
                         {
-                            _mediaFileService.Delete(previousFile, DeleteMediaFileReason.ManualOverride);
+                            existingFilesToDelete.Add(previousFile);
                         }
 
                         try
@@ -364,6 +365,11 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
                     _logger.Warn(e, "Couldn't import track " + localTrack);
                     importResults.Add(new ImportResult(importDecision, "Failed to import track"));
                 }
+            }
+
+            if (existingFilesToDelete.Any())
+            {
+                _mediaFileService.DeleteMany(existingFilesToDelete, DeleteMediaFileReason.ManualOverride);
             }
 
             var watch = new System.Diagnostics.Stopwatch();
