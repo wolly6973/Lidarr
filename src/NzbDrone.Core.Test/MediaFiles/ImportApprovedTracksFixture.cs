@@ -179,6 +179,7 @@ namespace NzbDrone.Core.Test.MediaFiles
             firstDecision.Item.Album.ForeignAlbumId = "existing-album-1";
 
             var secondAlbum = Builder<Album>.CreateNew()
+                .With(album => album.Id = firstDecision.Item.Album.Id + 1)
                 .With(album => album.Artist = remoteArtist)
                 .With(album => album.ForeignAlbumId = "existing-album-2")
                 .Build();
