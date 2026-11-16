@@ -118,6 +118,7 @@ namespace NzbDrone.Core.Test.MediaFiles
             var dbArtist = Builder<Artist>.CreateNew()
                 .With(artist => artist.Id = 123)
                 .With(artist => artist.ForeignArtistId = remoteArtist.ForeignArtistId)
+                .With(artist => artist.QualityProfile = new QualityProfile { Items = Qualities.QualityFixture.GetDefaultQualities() })
                 .Build();
             var firstDecision = _approvedDecisions.First();
             firstDecision.Item.Artist = remoteArtist;
