@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using NLog;
 using NzbDrone.Common.Disk;
@@ -54,24 +55,44 @@ namespace NzbDrone.Core.MediaFiles
                 throw new RootFolderNotFoundException($"Root folder '{rootFolder}' was not found.");
             }
 
-            foreach (var existingFile in existingFiles)
+            var filesToDelete = new List<TrackFile>(existingFiles.Count);
+
+            try
             {
-                var file = existingFile.First();
-                var trackFilePath = file.Path;
-                var subfolder = rootFolder.GetRelativePath(_diskProvider.GetParentFolder(trackFilePath));
-
-                if (_diskProvider.FileExists(trackFilePath))
+                foreach (var existingFile in existingFiles)
                 {
-                    _logger.Debug("Removing existing track file: {0}", file);
-                    _recycleBinProvider.DeleteFile(trackFilePath, subfolder);
+                    var file = existingFile.First();
+                    var trackFilePath = file.Path;
+                    var subfolder = rootFolder.GetRelativePath(_diskProvider.GetParentFolder(trackFilePath));
+
+                    if (_diskProvider.FileExists(trackFilePath))
+                    {
+                        _logger.Debug("Removing existing track file: {0}", file);
+                        _recycleBinProvider.DeleteFile(trackFilePath, subfolder);
+                    }
+                    else
+                    {
+                        _logger.Warn("Existing track file missing from disk: {0}", trackFilePath);
+                    }
+
+                    moveFileResult.OldFiles.Add(file);
+                    filesToDelete.Add(file);
                 }
-                else
+            }
+            catch
+            {
+                // Preserve partial cleanup if a recycle-bin operation fails.
+                if (filesToDelete.Any())
                 {
-                    _logger.Warn("Existing track file missing from disk: {0}", trackFilePath);
+                    _mediaFileService.DeleteMany(filesToDelete, DeleteMediaFileReason.Upgrade);
                 }
 
-                moveFileResult.OldFiles.Add(file);
-                _mediaFileService.Delete(file, DeleteMediaFileReason.Upgrade);
+                throw;
+            }
+
+            if (filesToDelete.Any())
+            {
+                _mediaFileService.DeleteMany(filesToDelete, DeleteMediaFileReason.Upgrade);
             }
 
             if (copyOnly)
