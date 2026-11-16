@@ -437,7 +437,8 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
 
             if (artist.Id == 0)
             {
-                var dbArtist = _artistService.FindById(artist.ForeignArtistId);
+                var dbArtist = addedArtists.FirstOrDefault(x => x.ForeignArtistId == artist.ForeignArtistId)
+                    ?? _artistService.FindById(artist.ForeignArtistId);
 
                 if (dbArtist == null)
                 {
