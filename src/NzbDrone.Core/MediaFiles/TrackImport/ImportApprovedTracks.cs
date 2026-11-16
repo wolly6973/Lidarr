@@ -91,6 +91,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
             var allImportedTrackFiles = new List<TrackFile>();
             var allOldTrackFiles = new List<TrackFile>();
             var addedArtists = new List<Artist>();
+            var resolvedArtists = new Dictionary<string, Artist>();
 
             var albumDecisions = decisions.Where(e => e.Item.Album != null && e.Approved)
                 .GroupBy(e => e.Item.Album.ForeignAlbumId).ToList();
@@ -103,7 +104,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
 
                 var decisionList = albumDecision.ToList();
 
-                var artist = EnsureArtistAdded(decisionList, addedArtists);
+                var artist = EnsureArtistAdded(decisionList, addedArtists, resolvedArtists);
 
                 if (artist == null)
                 {
@@ -431,14 +432,16 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
             return importResults;
         }
 
-        private Artist EnsureArtistAdded(List<ImportDecision<LocalTrack>> decisions, List<Artist> addedArtists)
+        private Artist EnsureArtistAdded(List<ImportDecision<LocalTrack>> decisions, List<Artist> addedArtists, Dictionary<string, Artist> resolvedArtists)
         {
             var artist = decisions.First().Item.Artist;
 
             if (artist.Id == 0)
             {
-                var dbArtist = addedArtists.FirstOrDefault(x => x.ForeignArtistId == artist.ForeignArtistId)
-                    ?? _artistService.FindById(artist.ForeignArtistId);
+                if (!resolvedArtists.TryGetValue(artist.ForeignArtistId, out var dbArtist))
+                {
+                    dbArtist = _artistService.FindById(artist.ForeignArtistId);
+                }
 
                 if (dbArtist == null)
                 {
@@ -474,6 +477,8 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
                         return null;
                     }
                 }
+
+                resolvedArtists[artist.ForeignArtistId] = dbArtist;
 
                 // Put in the newly loaded artist
                 foreach (var decision in decisions)
