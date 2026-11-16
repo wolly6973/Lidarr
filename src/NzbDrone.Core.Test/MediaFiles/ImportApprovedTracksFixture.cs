@@ -16,6 +16,7 @@ using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Music;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Profiles.Qualities;
+using NzbDrone.Core.RootFolders;
 using NzbDrone.Core.Qualities;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Test.Common;
@@ -103,6 +104,58 @@ namespace NzbDrone.Core.Test.MediaFiles
                     .Where(id => id == album.Id)
                     .Select(_ => album)
                     .ToList());
+        }
+
+        [Test]
+        public void should_reuse_newly_added_artist_for_multiple_albums()
+        {
+            var remoteArtist = Builder<Artist>.CreateNew()
+                .With(artist => artist.Id = 0)
+                .With(artist => artist.ForeignArtistId = "new-artist")
+                .With(artist => artist.QualityProfile = new QualityProfile { Items = Qualities.QualityFixture.GetDefaultQualities() })
+                .With(artist => artist.Path = @"C:\Test\Music\New Artist".AsOsAgnostic())
+                .Build();
+            var dbArtist = Builder<Artist>.CreateNew()
+                .With(artist => artist.Id = 123)
+                .With(artist => artist.ForeignArtistId = remoteArtist.ForeignArtistId)
+                .Build();
+            var firstDecision = _approvedDecisions.First();
+            firstDecision.Item.Artist = remoteArtist;
+            firstDecision.Item.Album.Artist = remoteArtist;
+
+            var secondAlbum = Builder<Album>.CreateNew()
+                .With(album => album.Artist = remoteArtist)
+                .Build();
+            var secondRelease = Builder<AlbumRelease>.CreateNew()
+                .With(release => release.AlbumId = secondAlbum.Id)
+                .With(release => release.Monitored = true)
+                .Build();
+            secondAlbum.AlbumReleases = new List<AlbumRelease> { secondRelease };
+            var secondDecision = new ImportDecision<LocalTrack>(
+                new LocalTrack
+                {
+                    Artist = remoteArtist,
+                    Album = secondAlbum,
+                    Release = secondRelease,
+                    Tracks = new List<Track> { Builder<Track>.CreateNew().Build() },
+                    Path = Path.Combine(remoteArtist.Path, "New Artist - 06 - Track.mp3"),
+                    Quality = firstDecision.Item.Quality,
+                    FileTrackInfo = new ParsedTrackInfo()
+                });
+
+            Mocker.GetMock<IRootFolderService>()
+                .Setup(service => service.GetBestRootFolder(It.IsAny<string>()))
+                .Returns(Builder<RootFolder>.CreateNew().Build());
+            Mocker.GetMock<IAddArtistService>()
+                .Setup(service => service.AddArtist(remoteArtist, false))
+                .Returns(dbArtist);
+
+            Subject.Import(new List<ImportDecision<LocalTrack>> { firstDecision, secondDecision }, false);
+
+            Mocker.GetMock<IArtistService>()
+                .Verify(service => service.FindById(remoteArtist.ForeignArtistId), Times.Once());
+            Mocker.GetMock<IAddArtistService>()
+                .Verify(service => service.AddArtist(remoteArtist, false), Times.Once());
         }
 
         [Test]
