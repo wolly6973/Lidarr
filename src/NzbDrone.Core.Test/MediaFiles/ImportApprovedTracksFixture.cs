@@ -237,7 +237,11 @@ namespace NzbDrone.Core.Test.MediaFiles
             Subject.Import(new List<ImportDecision<LocalTrack>> { track }, false);
 
             Mocker.GetMock<IMediaFileService>()
-                .Verify(v => v.Delete(It.IsAny<TrackFile>(), DeleteMediaFileReason.ManualOverride), Times.Once());
+                .Verify(
+                    v => v.DeleteMany(
+                        It.Is<List<TrackFile>>(files => files.Count == 1),
+                        DeleteMediaFileReason.ManualOverride),
+                    Times.Once());
         }
 
         [Test]
