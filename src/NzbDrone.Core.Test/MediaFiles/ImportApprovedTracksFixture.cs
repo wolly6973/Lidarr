@@ -357,6 +357,9 @@ namespace NzbDrone.Core.Test.MediaFiles
                         e.ImportedTracks.Count == _approvedDecisions.Count &&
                         e.OldFiles.Count == 0)),
                     Times.Once());
+
+            Mocker.GetMock<IAlbumService>()
+                .Verify(service => service.GetAlbums(It.IsAny<IEnumerable<int>>()), Times.Never());
         }
 
         [Test]
