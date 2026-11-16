@@ -328,6 +328,38 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         [Test]
+        public void should_delete_existing_files_in_one_batch()
+        {
+            var first = _approvedDecisions[0].Item;
+            var second = _approvedDecisions[1].Item;
+            second.Path = Path.Combine(second.Artist.Path, "Alien Ant Farm - 02 - Movies.mp3");
+            first.ExistingFile = true;
+            second.ExistingFile = true;
+
+            var previousFiles = new List<TrackFile>
+            {
+                Builder<TrackFile>.CreateNew().With(file => file.Path = first.Path).Build(),
+                Builder<TrackFile>.CreateNew().With(file => file.Path = second.Path).Build()
+            };
+
+            Mocker.GetMock<IMediaFileService>()
+                .Setup(service => service.GetFileWithPath(It.IsAny<List<string>>()))
+                .Returns(previousFiles);
+
+            Subject.Import(_approvedDecisions.Take(2).ToList(), false);
+
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(
+                    service => service.DeleteMany(
+                        It.Is<List<TrackFile>>(files => files.Count == 2),
+                        DeleteMediaFileReason.ManualOverride),
+                    Times.Once());
+
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(service => service.Delete(It.IsAny<TrackFile>(), DeleteMediaFileReason.ManualOverride), Times.Never());
+        }
+
+        [Test]
         public void should_lookup_download_history_once_for_all_files()
         {
             var downloadClientItem = new DownloadClientItem
