@@ -284,7 +284,8 @@ namespace NzbDrone.Core.Test.MediaFiles
             var previousFiles = Builder<TrackFile>.CreateListOfSize(2)
                 .All()
                 .With(file => file.Path = Path.Combine(_approvedDecisions.First().Item.Artist.Path, "previous.mp3"))
-                .Build();
+                .Build()
+                .ToList();
 
             Mocker.GetMock<IMediaFileService>()
                 .Setup(service => service.GetFilesByAlbums(It.IsAny<List<int>>()))
