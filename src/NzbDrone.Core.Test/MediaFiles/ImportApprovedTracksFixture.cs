@@ -269,9 +269,8 @@ namespace NzbDrone.Core.Test.MediaFiles
             Mocker.GetMock<IMediaFileService>()
                 .Verify(
                     service => service.GetFilesByAlbums(It.Is<List<int>>(ids =>
-                        ids.Count == 2 &&
-                        ids.Contains(firstDecision.Item.Album.Id) &&
-                        ids.Contains(secondAlbum.Id))),
+                        ids.Count == 1 &&
+                        ids.Contains(firstDecision.Item.Album.Id))),
                     Times.Once());
 
             Mocker.GetMock<IMediaFileService>()
