@@ -95,6 +95,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
             var albumDecisions = decisions.Where(e => e.Item.Album != null && e.Approved)
                 .GroupBy(e => e.Item.Album.ForeignAlbumId).ToList();
 
+            var albumsToImport = new List<(Artist Artist, Album Album, IGrouping<string, ImportDecision<LocalTrack>> Decisions)>();
             var iDecision = 1;
             foreach (var albumDecision in albumDecisions)
             {
@@ -118,19 +119,33 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
                     continue;
                 }
 
-                if (replaceExisting)
-                {
-                    RemoveExistingTrackFiles(artist, album);
-                }
+                albumsToImport.Add((artist, album, albumDecision));
+            }
 
+            if (replaceExisting && albumsToImport.Any())
+            {
+                var albumIds = albumsToImport.Select(item => item.Album.Id).Distinct().ToList();
+                var existingFilesByAlbum = _mediaFileService.GetFilesByAlbums(albumIds)
+                    .GroupBy(trackFile => trackFile.AlbumId)
+                    .ToDictionary(group => group.Key, group => group.ToList());
+
+                foreach (var albumToImport in albumsToImport)
+                {
+                    existingFilesByAlbum.TryGetValue(albumToImport.Album.Id, out var previousFiles);
+                    RemoveExistingTrackFiles(albumToImport.Artist, albumToImport.Album, previousFiles ?? new List<TrackFile>());
+                }
+            }
+
+            foreach (var albumToImport in albumsToImport)
+            {
                 // set the correct release to be monitored before importing the new files
-                var newRelease = albumDecision.First().Item.Release;
+                var newRelease = albumToImport.Decisions.First().Item.Release;
                 _logger.Debug("Updating release to {0} [{1} tracks]", newRelease, newRelease.TrackCount);
-                album.AlbumReleases = _releaseService.SetMonitored(newRelease);
+                albumToImport.Album.AlbumReleases = _releaseService.SetMonitored(newRelease);
 
                 // Publish album edited event.
                 // Deliberately don't put in the old album since we don't want to trigger an ArtistScan.
-                _eventAggregator.PublishEvent(new AlbumEditedEvent(album, album));
+                _eventAggregator.PublishEvent(new AlbumEditedEvent(albumToImport.Album, albumToImport.Album));
             }
 
             var qualifiedImports = decisions
@@ -501,10 +516,9 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
             }
         }
 
-        private void RemoveExistingTrackFiles(Artist artist, Album album)
+        private void RemoveExistingTrackFiles(Artist artist, Album album, List<TrackFile> previousFiles)
         {
             var rootFolder = _diskProvider.GetParentFolder(artist.Path);
-            var previousFiles = _mediaFileService.GetFilesByAlbum(album.Id);
 
             _logger.Debug($"Deleting {previousFiles.Count} existing files for {album}");
 
