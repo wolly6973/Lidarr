@@ -18,6 +18,7 @@ using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Profiles.Qualities;
 using NzbDrone.Core.Qualities;
 using NzbDrone.Core.Test.Framework;
+using NzbDrone.Core.RootFolders;
 using NzbDrone.Test.Common;
 
 namespace NzbDrone.Core.Test.MediaFiles.TrackImport
@@ -393,6 +394,59 @@ namespace NzbDrone.Core.Test.MediaFiles.TrackImport
 
             decisions.Should().HaveCount(3);
             decisions.First().Rejections.Should().NotBeEmpty();
+        }
+
+
+        [Test]
+        public void should_reuse_root_folders_and_quality_profiles_for_multiple_new_artists()
+        {
+            GivenAugmentationSuccess();
+            GivenAudioFiles(new[]
+            {
+                @"C:\Test\Unsorted\release1\track1.mp3".AsOsAgnostic(),
+                @"C:\Test\Unsorted\release2\track1.mp3".AsOsAgnostic()
+            });
+
+            var firstArtist = Builder<Artist>.CreateNew().With(x => x.QualityProfileId = 0).Build();
+            var secondArtist = Builder<Artist>.CreateNew().With(x => x.QualityProfileId = 0).Build();
+            var firstAlbum = Builder<Album>.CreateNew().With(x => x.Artist = firstArtist).Build();
+            var secondAlbum = Builder<Album>.CreateNew().With(x => x.Artist = secondArtist).Build();
+            var firstRelease = Builder<AlbumRelease>.CreateNew().With(x => x.Album = firstAlbum).Build();
+            var secondRelease = Builder<AlbumRelease>.CreateNew().With(x => x.Album = secondAlbum).Build();
+
+            Mocker.GetMock<IIdentificationService>()
+                .Setup(s => s.Identify(It.IsAny<List<LocalTrack>>(), It.IsAny<IdentificationOverrides>(), It.IsAny<ImportDecisionMakerConfig>()))
+                .Returns((List<LocalTrack> tracks, IdentificationOverrides idOverrides, ImportDecisionMakerConfig config) =>
+                {
+                    var first = new LocalAlbumRelease(tracks.Take(1).ToList()) { AlbumRelease = firstRelease };
+                    var second = new LocalAlbumRelease(tracks.Skip(1).ToList()) { AlbumRelease = secondRelease };
+                    return new List<LocalAlbumRelease> { first, second };
+                });
+
+            var rootFolder = Builder<RootFolder>.CreateNew()
+                .With(x => x.Path = @"C:\Test".AsOsAgnostic())
+                .With(x => x.DefaultQualityProfileId = 1)
+                .Build();
+            var qualityProfile = new QualityProfile
+            {
+                Id = 1,
+                Items = Qualities.QualityFixture.GetDefaultQualities()
+            };
+
+            Mocker.GetMock<IRootFolderService>()
+                .Setup(s => s.All())
+                .Returns(new List<RootFolder> { rootFolder });
+            Mocker.GetMock<IQualityProfileService>()
+                .Setup(s => s.Get(1))
+                .Returns(qualityProfile);
+
+            Subject.GetImportDecisions(_fileInfos, null, null, _idConfig);
+
+            Mocker.GetMock<IRootFolderService>().Verify(s => s.All(), Times.Once());
+            Mocker.GetMock<IRootFolderService>().Verify(s => s.GetBestRootFolder(It.IsAny<string>()), Times.Never());
+            Mocker.GetMock<IQualityProfileService>().Verify(s => s.Get(1), Times.Once());
+            firstArtist.QualityProfileId.Should().Be(1);
+            secondArtist.QualityProfileId.Should().Be(1);
         }
 
         [Test]
