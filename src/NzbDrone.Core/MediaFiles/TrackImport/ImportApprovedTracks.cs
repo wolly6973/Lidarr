@@ -129,10 +129,33 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
                     .GroupBy(trackFile => trackFile.AlbumId)
                     .ToDictionary(group => group.Key, group => group.ToList());
 
-                foreach (var albumToImport in albumsToImport)
+                var filesToDelete = new List<TrackFile>();
+
+                try
                 {
-                    existingFilesByAlbum.TryGetValue(albumToImport.Album.Id, out var previousFiles);
-                    RemoveExistingTrackFiles(albumToImport.Artist, albumToImport.Album, previousFiles ?? new List<TrackFile>());
+                    foreach (var albumToImport in albumsToImport)
+                    {
+                        existingFilesByAlbum.TryGetValue(albumToImport.Album.Id, out var previousFiles);
+                        filesToDelete.AddRange(RemoveExistingTrackFiles(
+                            albumToImport.Artist,
+                            albumToImport.Album,
+                            previousFiles ?? new List<TrackFile>()));
+                    }
+                }
+                catch
+                {
+                    // Preserve the existing partial-import behavior if a recycle-bin operation fails.
+                    if (filesToDelete.Any())
+                    {
+                        _mediaFileService.DeleteMany(filesToDelete, DeleteMediaFileReason.Upgrade);
+                    }
+
+                    throw;
+                }
+
+                if (filesToDelete.Any())
+                {
+                    _mediaFileService.DeleteMany(filesToDelete, DeleteMediaFileReason.Upgrade);
                 }
             }
 
@@ -516,9 +539,10 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
             }
         }
 
-        private void RemoveExistingTrackFiles(Artist artist, Album album, List<TrackFile> previousFiles)
+        private List<TrackFile> RemoveExistingTrackFiles(Artist artist, Album album, List<TrackFile> previousFiles)
         {
             var rootFolder = _diskProvider.GetParentFolder(artist.Path);
+            var removedFiles = new List<TrackFile>(previousFiles.Count);
 
             _logger.Debug($"Deleting {previousFiles.Count} existing files for {album}");
 
@@ -531,8 +555,10 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
                     _recycleBinProvider.DeleteFile(previousFile.Path, subfolder);
                 }
 
-                _mediaFileService.Delete(previousFile, DeleteMediaFileReason.Upgrade);
+                removedFiles.Add(previousFile);
             }
+
+            return removedFiles;
         }
 
         private string GetOriginalFilePath(DownloadClientItem downloadClientItem, LocalTrack localTrack)
