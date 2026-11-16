@@ -134,7 +134,8 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             Subject.UpgradeTrackFile(_trackFile, _localTrack);
 
-            Mocker.GetMock<IMediaFileService>().Verify(v => v.Delete(It.IsAny<TrackFile>(), DeleteMediaFileReason.Upgrade), Times.Once());
+            Mocker.GetMock<IMediaFileService>().Verify(v => v.DeleteMany(It.Is<List<TrackFile>>(files => files.Count == 1), DeleteMediaFileReason.Upgrade), Times.Once());
+            Mocker.GetMock<IMediaFileService>().Verify(v => v.Delete(It.IsAny<TrackFile>(), DeleteMediaFileReason.Upgrade), Times.Never());
         }
 
         [Test]
@@ -148,7 +149,8 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             Subject.UpgradeTrackFile(_trackFile, _localTrack);
 
-            Mocker.GetMock<IMediaFileService>().Verify(v => v.Delete(_localTrack.Tracks.Single().TrackFile.Value, DeleteMediaFileReason.Upgrade), Times.Once());
+            Mocker.GetMock<IMediaFileService>().Verify(v => v.DeleteMany(It.Is<List<TrackFile>>(files => files.Count == 1), DeleteMediaFileReason.Upgrade), Times.Once());
+            Mocker.GetMock<IMediaFileService>().Verify(v => v.Delete(It.IsAny<TrackFile>(), DeleteMediaFileReason.Upgrade), Times.Never());
         }
 
         [Test]
