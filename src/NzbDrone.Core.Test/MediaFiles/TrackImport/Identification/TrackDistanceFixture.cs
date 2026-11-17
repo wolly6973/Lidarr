@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using FizzWare.NBuilder;
 using FluentAssertions;
 using NUnit.Framework;
@@ -45,6 +46,30 @@ namespace NzbDrone.Core.Test.MediaFiles.TrackImport.Identification
                 .Build();
 
             return localTrack;
+        }
+
+        [Test]
+        public void should_calculate_track_number_offsets_by_medium()
+        {
+            var tracks = new List<Track>
+            {
+                Builder<Track>.CreateNew().With(x => x.MediumNumber = 2).Build(),
+                Builder<Track>.CreateNew().With(x => x.MediumNumber = 1).Build(),
+                Builder<Track>.CreateNew().With(x => x.MediumNumber = 2).Build(),
+                Builder<Track>.CreateNew().With(x => x.MediumNumber = 3).Build()
+            };
+
+            var offsets = DistanceCalculator.GetTotalTrackNumberOffsets(tracks);
+
+            offsets[1].Should().Be(0);
+            offsets[2].Should().Be(1);
+            offsets[3].Should().Be(3);
+
+            foreach (var track in tracks)
+            {
+                (track.AbsoluteTrackNumber + offsets[track.MediumNumber])
+                    .Should().Be(DistanceCalculator.GetTotalTrackNumber(track, tracks));
+            }
         }
 
         [Test]
