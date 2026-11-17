@@ -172,7 +172,10 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
 
         private List<LocalTrack> ToLocalTrack(IEnumerable<TrackFile> trackfiles, LocalAlbumRelease localRelease)
         {
-            var scanned = trackfiles.Join(localRelease.LocalTracks, t => t.Path, l => l.Path, (track, localTrack) => localTrack);
+            // Materialize the path join once. ExceptBy and Concat both consume this
+            // sequence, so leaving it deferred repeats the join over every track.
+            var scanned = trackfiles.Join(localRelease.LocalTracks, t => t.Path, l => l.Path, (track, localTrack) => localTrack)
+                .ToList();
             var toScan = trackfiles.ExceptBy(t => t.Path, scanned, s => s.Path, StringComparer.InvariantCulture);
             var localTracks = scanned.Concat(toScan.Select(x => new LocalTrack
             {
