@@ -35,6 +35,20 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
             return track.AbsoluteTrackNumber + allTracks.Count(t => t.MediumNumber < track.MediumNumber);
         }
 
+        public static Dictionary<int, int> GetTotalTrackNumberOffsets(List<Track> allTracks)
+        {
+            var offsets = new Dictionary<int, int>();
+            var offset = 0;
+
+            foreach (var medium in allTracks.GroupBy(x => x.MediumNumber).OrderBy(x => x.Key))
+            {
+                offsets[medium.Key] = offset;
+                offset += medium.Count();
+            }
+
+            return offsets;
+        }
+
         public static Distance TrackDistance(LocalTrack localTrack, Track mbTrack, int totalTrackNumber, bool includeArtist = false)
         {
             var dist = new Distance();
