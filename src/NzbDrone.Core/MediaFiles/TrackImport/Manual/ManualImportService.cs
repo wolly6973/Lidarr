@@ -208,7 +208,8 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Manual
                                             f => f.FullName,
                                             d => d.Item.Path,
                                             (f, d) => new { File = f, Decision = d },
-                                            PathEqualityComparer.Instance);
+                                            PathEqualityComparer.Instance)
+                .ToList();
 
             var newItems = newFiles.Select(x => MapItem(x.Decision, downloadId, replaceExistingFiles, false));
             var existingDecisions = decisions.Except(newFiles.Select(x => x.Decision));
@@ -237,8 +238,8 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Manual
         public List<ManualImportItem> UpdateItems(List<ManualImportItem> items)
         {
             var replaceExistingFiles = items.All(x => x.ReplaceExistingFiles);
-            var groupedItems = items.Where(x => !x.AdditionalFile).GroupBy(x => x.Album?.Id);
-            _logger.Debug($"UpdateItems, {groupedItems.Count()} groups, replaceExisting {replaceExistingFiles}");
+            var groupedItems = items.Where(x => !x.AdditionalFile).GroupBy(x => x.Album?.Id).ToList();
+            _logger.Debug($"UpdateItems, {groupedItems.Count} groups, replaceExisting {replaceExistingFiles}");
 
             var result = new List<ManualImportItem>();
 
@@ -269,7 +270,8 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Manual
                                                i => i.Path,
                                                d => d.Item.Path,
                                                (i, d) => new { Item = i, Decision = d },
-                                               PathEqualityComparer.Instance);
+                                               PathEqualityComparer.Instance)
+                    .ToList();
 
                 foreach (var pair in existingItems)
                 {
