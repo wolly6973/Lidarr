@@ -360,10 +360,11 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
         {
             var distances = new Distance[localTracks.Count, mbTracks.Count];
             var costs = new double[localTracks.Count, mbTracks.Count];
+            var trackNumberOffsets = DistanceCalculator.GetTotalTrackNumberOffsets(mbTracks);
 
             for (var col = 0; col < mbTracks.Count; col++)
             {
-                var totalTrackNumber = DistanceCalculator.GetTotalTrackNumber(mbTracks[col], mbTracks);
+                var totalTrackNumber = mbTracks[col].AbsoluteTrackNumber + trackNumberOffsets[mbTracks[col].MediumNumber];
                 for (var row = 0; row < localTracks.Count; row++)
                 {
                     distances[row, col] = DistanceCalculator.TrackDistance(localTracks[row], mbTracks[col], totalTrackNumber, false);
