@@ -381,6 +381,15 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Manual
             var imported = new List<ImportResult>();
             var importedTrackedDownload = new List<ManuallyImportedFile>();
             var albumIds = message.Files.GroupBy(e => e.AlbumId).ToList();
+
+            // A tracked download can contain multiple albums. Resolve each download once
+            // and reuse it across album groups instead of repeating the database lookup.
+            var trackedDownloadsById = albumIds
+                .Select(group => group.Select(x => x.DownloadId).FirstOrDefault(x => x.IsNotNullOrWhiteSpace()))
+                .Where(downloadId => downloadId.IsNotNullOrWhiteSpace())
+                .Distinct()
+                .ToDictionary(downloadId => downloadId, downloadId => _trackedDownloadService.Find(downloadId));
+
             var fileCount = 0;
 
             foreach (var importAlbumId in albumIds)
@@ -443,7 +452,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Manual
                 }
                 else
                 {
-                    var trackedDownload = _trackedDownloadService.Find(downloadId);
+                    var trackedDownload = trackedDownloadsById[downloadId];
                     var importResults = _importApprovedTracks.Import(albumImportDecisions, message.ReplaceExistingFiles, trackedDownload.DownloadItem, message.ImportMode);
 
                     imported.AddRange(importResults);
