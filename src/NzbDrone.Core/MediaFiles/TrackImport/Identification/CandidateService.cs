@@ -238,7 +238,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
             {
                 Release = x,
                 TrackCount = x.TrackCount,
-                CommonProportion = (double)x.Tracks.Value.Count(y => recordingIdSet.Contains(y.ForeignRecordingId)) / localAlbumRelease.TrackCount
+                CommonProportion = (double)x.Tracks.Value.Select(y => y.ForeignRecordingId).Where(recordingIdSet.Contains).Distinct().Count() / localAlbumRelease.TrackCount
             })
                 .Where(x => x.CommonProportion > 0.6)
                 .ToList()
