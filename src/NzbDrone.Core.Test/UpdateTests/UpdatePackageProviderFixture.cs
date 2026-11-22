@@ -3,6 +3,7 @@ using System.Linq;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
+using NzbDrone.Common.Cloud;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
@@ -22,6 +23,7 @@ namespace NzbDrone.Core.Test.UpdateTests
         [Test]
         public void no_update_when_version_higher()
         {
+            Mocker.SetConstant<ILidarrCloudRequestBuilder>(new LidarrCloudRequestBuilder());
             Mocker.GetMock<IHttpClient>()
                   .Setup(c => c.Get<UpdatePackageAvailable>(It.IsAny<HttpRequest>()))
                   .Returns<HttpRequest>(request => new HttpResponse<UpdatePackageAvailable>(
