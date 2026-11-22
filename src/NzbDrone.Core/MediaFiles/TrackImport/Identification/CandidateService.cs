@@ -216,7 +216,8 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
 
         public List<CandidateAlbumRelease> GetDbCandidatesFromFingerprint(LocalAlbumRelease localAlbumRelease, IdentificationOverrides idOverrides, bool includeExisting)
         {
-            var recordingIds = localAlbumRelease.LocalTracks.Where(x => x.AcoustIdResults != null).SelectMany(x => x.AcoustIdResults).ToList();
+            var recordingIds = localAlbumRelease.LocalTracks.Where(x => x.AcoustIdResults != null).SelectMany(x => x.AcoustIdResults).Distinct().ToList();
+            var recordingIdSet = new HashSet<string>(recordingIds);
             var allReleases = _releaseService.GetReleasesByRecordingIds(recordingIds);
 
             // make sure releases are consistent with those selected by the user
@@ -237,7 +238,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
             {
                 Release = x,
                 TrackCount = x.TrackCount,
-                CommonProportion = x.Tracks.Value.Select(y => y.ForeignRecordingId).Intersect(recordingIds).Count() / localAlbumRelease.TrackCount
+                CommonProportion = (double)x.Tracks.Value.Count(y => recordingIdSet.Contains(y.ForeignRecordingId)) / localAlbumRelease.TrackCount
             })
                 .Where(x => x.CommonProportion > 0.6)
                 .ToList()
