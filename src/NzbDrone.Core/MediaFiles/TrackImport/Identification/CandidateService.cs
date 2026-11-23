@@ -226,6 +226,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
                     recordingIds.Add(recordingId);
                 }
             }
+
             var allReleases = _releaseService.GetReleasesByRecordingIds(recordingIds);
 
             // make sure releases are consistent with those selected by the user
