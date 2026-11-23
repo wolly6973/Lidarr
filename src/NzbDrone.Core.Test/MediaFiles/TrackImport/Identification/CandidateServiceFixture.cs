@@ -309,6 +309,9 @@ namespace NzbDrone.Core.Test.MediaFiles.TrackImport.Identification
             var local = GivenLocalAlbumRelease();
 
             Subject.GetDbCandidatesFromFingerprint(local, null, false).Should().BeEquivalentTo(new List<CandidateAlbumRelease>());
+
+            Mocker.GetMock<IReleaseService>()
+                .Verify(x => x.GetReleasesByRecordingIds(It.IsAny<List<string>>()), Times.Never);
         }
 
         [Test]
