@@ -215,6 +215,7 @@ namespace NzbDrone.Core.Test.MediaFiles.TrackImport.Identification
             tracks[2].ForeignRecordingId = "recording-3";
 
             var release = GivenAlbumRelease("album", tracks);
+            tracks.ForEach(x => x.AlbumReleaseId = release.Id);
             var localTracks = GivenLocalTracks(tracks, release);
             localTracks[0].AcoustIdResults = new List<string> { "recording-1", "recording-1" };
             localTracks[1].AcoustIdResults = new List<string> { "recording-2" };
@@ -225,12 +226,17 @@ namespace NzbDrone.Core.Test.MediaFiles.TrackImport.Identification
             Mocker.GetMock<IReleaseService>()
                 .Setup(x => x.GetReleasesByRecordingIds(It.Is<List<string>>(ids => ids.SequenceEqual(new[] { "recording-1", "recording-2" }))))
                 .Returns(new List<AlbumRelease> { release });
+            Mocker.GetMock<ITrackService>()
+                .Setup(x => x.GetTracksByReleases(It.Is<List<int>>(ids => ids.SequenceEqual(new[] { release.Id }))))
+                .Returns(tracks);
 
             var result = Subject.GetDbCandidatesFromFingerprint(local, null, false);
 
             result.Select(x => x.AlbumRelease.Id).Should().Equal(release.Id);
             Mocker.GetMock<IReleaseService>()
                 .Verify(x => x.GetReleasesByRecordingIds(It.IsAny<List<string>>()), Times.Once);
+            Mocker.GetMock<ITrackService>()
+                .Verify(x => x.GetTracksByReleases(It.IsAny<List<int>>()), Times.Once);
         }
 
         [Test]
@@ -245,6 +251,7 @@ namespace NzbDrone.Core.Test.MediaFiles.TrackImport.Identification
             var release = GivenAlbumRelease("album", tracks);
             release.AlbumId = 101;
             release.Album.Value.ArtistMetadataId = 999;
+            tracks.ForEach(x => x.AlbumReleaseId = release.Id);
 
             var localTracks = GivenLocalTracks(tracks, release);
             for (var i = 0; i < localTracks.Count; i++)
@@ -269,12 +276,17 @@ namespace NzbDrone.Core.Test.MediaFiles.TrackImport.Identification
             Mocker.GetMock<IAlbumService>()
                 .Setup(x => x.GetAlbums(It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { 101 }))))
                 .Returns(new List<Album> { album });
+            Mocker.GetMock<ITrackService>()
+                .Setup(x => x.GetTracksByReleases(It.Is<List<int>>(ids => ids.SequenceEqual(new[] { release.Id }))))
+                .Returns(tracks);
 
             var result = Subject.GetDbCandidatesFromFingerprint(local, new IdentificationOverrides { Artist = artist }, false);
 
             result.Select(x => x.AlbumRelease.Id).Should().Equal(release.Id);
             Mocker.GetMock<IAlbumService>()
                 .Verify(x => x.GetAlbums(It.IsAny<IEnumerable<int>>()), Times.Once);
+            Mocker.GetMock<ITrackService>()
+                .Verify(x => x.GetTracksByReleases(It.IsAny<List<int>>()), Times.Once);
         }
 
         [Test]
