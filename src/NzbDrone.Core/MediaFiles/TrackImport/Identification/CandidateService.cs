@@ -239,7 +239,11 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
             }
             else if (idOverrides?.Artist != null)
             {
-                allReleases = allReleases.Where(x => x.Album.Value.ArtistMetadataId == idOverrides.Artist.ArtistMetadataId).ToList();
+                var artistAlbumIds = new HashSet<int>(_albumService.GetAlbums(allReleases.Select(x => x.AlbumId).Distinct())
+                    .Where(x => x.ArtistMetadataId == idOverrides.Artist.ArtistMetadataId)
+                    .Select(x => x.Id));
+
+                allReleases = allReleases.Where(x => artistAlbumIds.Contains(x.AlbumId)).ToList();
             }
 
             return GetDbCandidatesByRelease(allReleases.Select(x => new
