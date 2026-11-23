@@ -315,6 +315,40 @@ namespace NzbDrone.Core.Test.MediaFiles.TrackImport.Identification
         }
 
         [Test]
+        public void get_candidates_by_fingerprint_should_skip_override_lookups_when_no_releases_are_found()
+        {
+            var tracks = GivenTracks(3);
+            for (var i = 0; i < tracks.Count; i++)
+            {
+                tracks[i].ForeignRecordingId = $"recording-{i + 1}";
+            }
+
+            var release = GivenAlbumRelease("album", tracks);
+            var localTracks = GivenLocalTracks(tracks, release);
+            for (var i = 0; i < localTracks.Count; i++)
+            {
+                localTracks[i].AcoustIdResults = new List<string> { tracks[i].ForeignRecordingId };
+            }
+
+            var artist = Builder<Artist>
+                .CreateNew()
+                .With(x => x.ArtistMetadataId = _artist.Id)
+                .Build();
+
+            Mocker.GetMock<IReleaseService>()
+                .Setup(x => x.GetReleasesByRecordingIds(It.IsAny<List<string>>()))
+                .Returns(new List<AlbumRelease>());
+
+            var result = Subject.GetDbCandidatesFromFingerprint(new LocalAlbumRelease(localTracks), new IdentificationOverrides { Artist = artist }, false);
+
+            result.Should().BeEmpty();
+            Mocker.GetMock<IAlbumService>()
+                .Verify(x => x.GetAlbums(It.IsAny<IEnumerable<int>>()), Times.Never);
+            Mocker.GetMock<ITrackService>()
+                .Verify(x => x.GetTracksByReleases(It.IsAny<List<int>>()), Times.Never);
+        }
+
+        [Test]
         public void get_candidates_should_only_return_specified_release_if_set()
         {
             var tracks = GivenTracks(3);
