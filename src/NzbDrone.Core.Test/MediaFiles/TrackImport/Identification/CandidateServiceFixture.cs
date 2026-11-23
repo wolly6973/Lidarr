@@ -234,6 +234,50 @@ namespace NzbDrone.Core.Test.MediaFiles.TrackImport.Identification
         }
 
         [Test]
+        public void get_candidates_by_fingerprint_should_batch_load_albums_for_artist_override()
+        {
+            var tracks = GivenTracks(3);
+            for (var i = 0; i < tracks.Count; i++)
+            {
+                tracks[i].ForeignRecordingId = $"recording-{i + 1}";
+            }
+
+            var release = GivenAlbumRelease("album", tracks);
+            release.AlbumId = 101;
+            release.Album.Value.ArtistMetadataId = 999;
+
+            var localTracks = GivenLocalTracks(tracks, release);
+            for (var i = 0; i < localTracks.Count; i++)
+            {
+                localTracks[i].AcoustIdResults = new List<string> { tracks[i].ForeignRecordingId };
+            }
+
+            var local = new LocalAlbumRelease(localTracks);
+            var artist = Builder<Artist>
+                .CreateNew()
+                .With(x => x.ArtistMetadataId = _artist.Id)
+                .Build();
+            var album = Builder<Album>
+                .CreateNew()
+                .With(x => x.Id = 101)
+                .With(x => x.ArtistMetadataId = _artist.Id)
+                .Build();
+
+            Mocker.GetMock<IReleaseService>()
+                .Setup(x => x.GetReleasesByRecordingIds(It.IsAny<List<string>>()))
+                .Returns(new List<AlbumRelease> { release });
+            Mocker.GetMock<IAlbumService>()
+                .Setup(x => x.GetAlbums(It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { 101 }))))
+                .Returns(new List<Album> { album });
+
+            var result = Subject.GetDbCandidatesFromFingerprint(local, new IdentificationOverrides { Artist = artist }, false);
+
+            result.Select(x => x.AlbumRelease.Id).Should().Equal(release.Id);
+            Mocker.GetMock<IAlbumService>()
+                .Verify(x => x.GetAlbums(It.IsAny<IEnumerable<int>>()), Times.Once);
+        }
+
+        [Test]
         public void get_candidates_by_fingerprint_should_not_fail_if_fingerprint_lookup_returned_null()
         {
             Mocker.GetMock<IFingerprintingService>()
