@@ -24,6 +24,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
         private readonly IAlbumService _albumService;
         private readonly IReleaseService _releaseService;
         private readonly IMediaFileService _mediaFileService;
+        private readonly ITrackService _trackService;
         private readonly Logger _logger;
 
         public CandidateService(ISearchForNewAlbum albumSearchService,
@@ -31,6 +32,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
                                 IAlbumService albumService,
                                 IReleaseService releaseService,
                                 IMediaFileService mediaFileService,
+                                ITrackService trackService,
                                 Logger logger)
         {
             _albumSearchService = albumSearchService;
@@ -38,6 +40,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
             _albumService = albumService;
             _releaseService = releaseService;
             _mediaFileService = mediaFileService;
+            _trackService = trackService;
             _logger = logger;
         }
 
@@ -247,11 +250,20 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
                 allReleases = allReleases.Where(x => artistAlbumIds.Contains(x.AlbumId)).ToList();
             }
 
-            return GetDbCandidatesByRelease(allReleases.Select(x => new
+            var releaseRecordingIds = _trackService.GetTracksByReleases(allReleases.Select(x => x.Id).Distinct().ToList())
+                .GroupBy(x => x.AlbumReleaseId)
+                .ToDictionary(x => x.Key, x => new HashSet<string>(x.Select(y => y.ForeignRecordingId)));
+
+            return GetDbCandidatesByRelease(allReleases.Select(x =>
             {
-                Release = x,
-                TrackCount = x.TrackCount,
-                CommonProportion = (double)x.Tracks.Value.Select(y => y.ForeignRecordingId).Where(recordingIdSet.Contains).Distinct().Count() / localAlbumRelease.TrackCount
+                releaseRecordingIds.TryGetValue(x.Id, out var trackRecordingIds);
+
+                return new
+                {
+                    Release = x,
+                    TrackCount = x.TrackCount,
+                    CommonProportion = trackRecordingIds == null ? 0 : (double)trackRecordingIds.Count(recordingIdSet.Contains) / localAlbumRelease.TrackCount
+                };
             })
                 .Where(x => x.CommonProportion > 0.6)
                 .ToList()
