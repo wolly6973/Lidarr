@@ -325,6 +325,9 @@ namespace NzbDrone.Core.Test.MediaFiles.TrackImport.Identification
 
             Subject.GetDbCandidatesFromTags(localAlbumRelease, idOverrides, false).Should().BeEquivalentTo(
                 new List<CandidateAlbumRelease> { new CandidateAlbumRelease(release) });
+
+            Mocker.GetMock<IReleaseService>()
+                .Verify(x => x.GetReleaseByForeignReleaseId(It.IsAny<string>(), It.IsAny<bool>()), Times.Never);
         }
 
         [Test]
