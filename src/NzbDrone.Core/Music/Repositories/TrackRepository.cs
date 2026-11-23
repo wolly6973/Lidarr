@@ -81,7 +81,7 @@ namespace NzbDrone.Core.Music
 
             var sql = Builder()
                 .Where<Track>(x => albumReleaseIds.Contains(x.AlbumReleaseId))
-                .AddTemplate($"SELECT \\\"AlbumReleaseId\\\", \\\"ForeignRecordingId\\\" FROM \\\"{_table}\\\" /**where**/");
+                .AddTemplate($"SELECT \"AlbumReleaseId\", \"ForeignRecordingId\" FROM \"{_table}\" /**where**/");
 
             return _database.Query<TrackRecording>(sql.RawSql, sql.Parameters).ToList();
         }
