@@ -240,6 +240,11 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
 
             var allReleases = _releaseService.GetReleasesByRecordingIds(recordingIds);
 
+            if (allReleases.Count == 0)
+            {
+                return new List<CandidateAlbumRelease>();
+            }
+
             // make sure releases are consistent with those selected by the user
             if (idOverrides?.AlbumRelease != null)
             {
