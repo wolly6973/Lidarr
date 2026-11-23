@@ -233,6 +233,11 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
                 }
             }
 
+            if (recordingIds.Count == 0)
+            {
+                return new List<CandidateAlbumRelease>();
+            }
+
             var allReleases = _releaseService.GetReleasesByRecordingIds(recordingIds);
 
             // make sure releases are consistent with those selected by the user
