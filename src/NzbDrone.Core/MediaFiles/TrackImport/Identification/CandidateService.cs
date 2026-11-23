@@ -216,8 +216,16 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
 
         public List<CandidateAlbumRelease> GetDbCandidatesFromFingerprint(LocalAlbumRelease localAlbumRelease, IdentificationOverrides idOverrides, bool includeExisting)
         {
-            var recordingIds = localAlbumRelease.LocalTracks.Where(x => x.AcoustIdResults != null).SelectMany(x => x.AcoustIdResults).Distinct().ToList();
-            var recordingIdSet = new HashSet<string>(recordingIds);
+            var recordingIds = new List<string>();
+            var recordingIdSet = new HashSet<string>();
+
+            foreach (var recordingId in localAlbumRelease.LocalTracks.Where(x => x.AcoustIdResults != null).SelectMany(x => x.AcoustIdResults))
+            {
+                if (recordingIdSet.Add(recordingId))
+                {
+                    recordingIds.Add(recordingId);
+                }
+            }
             var allReleases = _releaseService.GetReleasesByRecordingIds(recordingIds);
 
             // make sure releases are consistent with those selected by the user
