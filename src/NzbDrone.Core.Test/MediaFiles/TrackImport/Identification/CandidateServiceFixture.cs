@@ -277,8 +277,8 @@ namespace NzbDrone.Core.Test.MediaFiles.TrackImport.Identification
                 .Setup(x => x.GetAlbums(It.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { 101 }))))
                 .Returns(new List<Album> { album });
             Mocker.GetMock<ITrackService>()
-                .Setup(x => x.GetTracksByReleases(It.Is<List<int>>(ids => ids.SequenceEqual(new[] { release.Id }))))
-                .Returns(tracks);
+                .Setup(x => x.GetTrackRecordingsByReleases(It.Is<List<int>>(ids => ids.SequenceEqual(new[] { release.Id }))))
+                .Returns(tracks.Select(x => new TrackRecording { AlbumReleaseId = x.AlbumReleaseId, ForeignRecordingId = x.ForeignRecordingId }).ToList());
 
             var result = Subject.GetDbCandidatesFromFingerprint(local, new IdentificationOverrides { Artist = artist }, false);
 
@@ -286,7 +286,7 @@ namespace NzbDrone.Core.Test.MediaFiles.TrackImport.Identification
             Mocker.GetMock<IAlbumService>()
                 .Verify(x => x.GetAlbums(It.IsAny<IEnumerable<int>>()), Times.Once);
             Mocker.GetMock<ITrackService>()
-                .Verify(x => x.GetTracksByReleases(It.IsAny<List<int>>()), Times.Once);
+                .Verify(x => x.GetTrackRecordingsByReleases(It.IsAny<List<int>>()), Times.Once);
         }
 
         [Test]
