@@ -56,7 +56,10 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
             AlbumRelease tagMbidRelease = null;
             List<CandidateAlbumRelease> tagCandidate = null;
 
-            var releaseIds = localAlbumRelease.LocalTracks.Select(x => x.FileTrackInfo.ReleaseMBId).Distinct().ToList();
+            var releaseIds = idOverrides?.AlbumRelease == null
+                ? localAlbumRelease.LocalTracks.Select(x => x.FileTrackInfo.ReleaseMBId).Distinct().ToList()
+                : new List<string>();
+
             if (releaseIds.Count == 1 && releaseIds[0].IsNotNullOrWhiteSpace())
             {
                 _logger.Debug("Selecting release from consensus ForeignReleaseId [{0}]", releaseIds[0]);
