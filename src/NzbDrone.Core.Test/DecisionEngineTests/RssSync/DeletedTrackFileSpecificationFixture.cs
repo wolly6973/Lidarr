@@ -90,7 +90,7 @@ namespace NzbDrone.Core.Test.DecisionEngineTests.RssSync
         private void SetupMediaFile(List<TrackFile> files)
         {
             Mocker.GetMock<IMediaFileService>()
-                              .Setup(v => v.GetFilesByAlbum(It.IsAny<int>()))
+                              .Setup(v => v.GetFilesByAlbums(It.IsAny<List<int>>()))
                               .Returns(files);
         }
 
@@ -115,6 +115,30 @@ namespace NzbDrone.Core.Test.DecisionEngineTests.RssSync
         public void should_return_true_when_searching()
         {
             Subject.IsSatisfiedBy(_parseResultSingle, new ArtistSearchCriteria()).Accepted.Should().BeTrue();
+        }
+
+        [Test]
+        public void should_load_existing_files_for_all_albums_in_one_batch()
+        {
+            SetupMediaFile(new List<TrackFile> { _firstFile, _secondFile });
+
+            Subject.IsSatisfiedBy(_parseResultMulti, null);
+
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(v => v.GetFilesByAlbums(It.Is<List<int>>(ids => ids.Count == 2)), Times.Once());
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(v => v.GetFilesByAlbum(It.IsAny<int>()), Times.Never());
+        }
+
+        [Test]
+        public void should_not_query_existing_files_when_there_are_no_albums()
+        {
+            _parseResultSingle.Albums = new List<Album>();
+
+            Subject.IsSatisfiedBy(_parseResultSingle, null).Accepted.Should().BeTrue();
+
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(v => v.GetFilesByAlbums(It.IsAny<List<int>>()), Times.Never());
         }
 
         [Test]
