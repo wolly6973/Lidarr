@@ -45,11 +45,11 @@ namespace NzbDrone.Core.DecisionEngine.Specifications.RssSync
 
             var albumIds = subject.Albums.Select(x => x.Id).Distinct().ToList();
             var missingTrackFiles = albumIds.Count == 0
-                ? Array.Empty<TrackFile>()
+                ? new System.Collections.Generic.List<TrackFile>()
                 : _albumService.GetFilesByAlbums(albumIds)
                     .DistinctBy(v => v.Id)
                     .Where(v => IsTrackFileMissing(subject.Artist, v))
-                    .ToArray();
+                    .ToList();
 
             if (missingTrackFiles.Any())
             {
