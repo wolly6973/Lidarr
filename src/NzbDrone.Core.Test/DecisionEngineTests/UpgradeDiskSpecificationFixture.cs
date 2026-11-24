@@ -100,6 +100,15 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
         }
 
         [Test]
+        public void should_only_check_duplicate_album_ids_once()
+        {
+            Subject.IsSatisfiedBy(_parseResultMulti, null);
+
+            Mocker.GetMock<ICustomFormatCalculationService>()
+                .Verify(c => c.ParseCustomFormat(It.IsAny<TrackFile>()), Times.Once());
+        }
+
+        [Test]
         public void should_not_query_existing_files_when_there_are_no_albums()
         {
             _parseResultSingle.Albums = new List<Album>();
