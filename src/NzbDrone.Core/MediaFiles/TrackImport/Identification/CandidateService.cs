@@ -272,13 +272,13 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
 
             foreach (var trackRecording in _trackService.GetTrackRecordingsByReleases(allReleases.Select(x => x.Id).Distinct().ToList()))
             {
-                if (!releaseRecordingIds.TryGetValue(trackRecording.AlbumReleaseId, out var recordingIdSet))
+                if (!releaseRecordingIds.TryGetValue(trackRecording.AlbumReleaseId, out var releaseRecordingIdSet))
                 {
-                    recordingIdSet = new HashSet<string>();
-                    releaseRecordingIds.Add(trackRecording.AlbumReleaseId, recordingIdSet);
+                    releaseRecordingIdSet = new HashSet<string>();
+                    releaseRecordingIds.Add(trackRecording.AlbumReleaseId, releaseRecordingIdSet);
                 }
 
-                recordingIdSet.Add(trackRecording.ForeignRecordingId);
+                releaseRecordingIdSet.Add(trackRecording.ForeignRecordingId);
             }
 
             return GetDbCandidatesByRelease(allReleases.Select(x =>
