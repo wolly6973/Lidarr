@@ -43,11 +43,13 @@ namespace NzbDrone.Core.DecisionEngine.Specifications.RssSync
                 return Decision.Accept();
             }
 
-            var missingTrackFiles = subject.Albums
-                                             .SelectMany(v => _albumService.GetFilesByAlbum(v.Id))
-                                             .DistinctBy(v => v.Id)
-                                             .Where(v => IsTrackFileMissing(subject.Artist, v))
-                                             .ToArray();
+            var albumIds = subject.Albums.Select(x => x.Id).Distinct().ToList();
+            var missingTrackFiles = albumIds.Count == 0
+                ? Array.Empty<TrackFile>()
+                : _albumService.GetFilesByAlbums(albumIds)
+                    .DistinctBy(v => v.Id)
+                    .Where(v => IsTrackFileMissing(subject.Artist, v))
+                    .ToArray();
 
             if (missingTrackFiles.Any())
             {
