@@ -54,7 +54,7 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
                 .Returns(new List<Track>());
 
             Mocker.GetMock<IMediaFileService>()
-                  .Setup(c => c.GetFilesByAlbum(It.IsAny<int>()))
+                  .Setup(c => c.GetFilesByAlbums(It.IsAny<List<int>>()))
                   .Returns(new List<TrackFile> { _firstFile, _secondFile });
 
             _parseResultMulti = new RemoteAlbum
@@ -86,6 +86,17 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
         private void WithSecondFileUpgradable()
         {
             _secondFile.Quality = new QualityModel(Quality.MP3_192);
+        }
+
+        [Test]
+        public void should_load_existing_files_for_all_albums_in_one_batch()
+        {
+            Subject.IsSatisfiedBy(_parseResultMulti, null);
+
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(c => c.GetFilesByAlbums(It.Is<List<int>>(ids => ids.Count == 3)), Times.Once());
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(c => c.GetFilesByAlbum(It.IsAny<int>()), Times.Never());
         }
 
         [Test]
