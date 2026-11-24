@@ -94,7 +94,7 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
             Subject.IsSatisfiedBy(_parseResultMulti, null);
 
             Mocker.GetMock<IMediaFileService>()
-                .Verify(c => c.GetFilesByAlbums(It.Is<List<int>>(ids => ids.Count == 3)), Times.Once());
+                .Verify(c => c.GetFilesByAlbums(It.Is<List<int>>(ids => ids.Count == 1)), Times.Once());
             Mocker.GetMock<IMediaFileService>()
                 .Verify(c => c.GetFilesByAlbum(It.IsAny<int>()), Times.Never());
         }
