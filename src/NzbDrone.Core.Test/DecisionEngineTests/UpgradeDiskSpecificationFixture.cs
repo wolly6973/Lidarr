@@ -100,6 +100,17 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
         }
 
         [Test]
+        public void should_not_query_existing_files_when_there_are_no_albums()
+        {
+            _parseResultSingle.Albums = new List<Album>();
+
+            Subject.IsSatisfiedBy(_parseResultSingle, null).Accepted.Should().BeTrue();
+
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(c => c.GetFilesByAlbums(It.IsAny<List<int>>()), Times.Never());
+        }
+
+        [Test]
         public void should_return_true_if_album_has_no_existing_file()
         {
             Mocker.GetMock<IMediaFileService>()
