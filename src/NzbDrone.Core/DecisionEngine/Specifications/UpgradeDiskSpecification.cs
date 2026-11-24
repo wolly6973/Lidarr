@@ -40,12 +40,18 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
 
         public virtual Decision IsSatisfiedBy(RemoteAlbum subject, SearchCriteriaBase searchCriteria)
         {
+            var albumIds = subject.Albums.Select(x => x.Id).Distinct().ToList();
+            var filesByAlbum = _mediaFileService.GetFilesByAlbums(albumIds)
+                .GroupBy(x => x.AlbumId)
+                .ToDictionary(x => x.Key, x => x.ToList());
+
             foreach (var album in subject.Albums)
             {
                 var tracksMissing = _missingFilesCache.Get(album.Id.ToString(),
                                                            () => _trackService.TracksWithoutFiles(album.Id).Any(),
                                                            TimeSpan.FromSeconds(30));
-                var trackFiles = _mediaFileService.GetFilesByAlbum(album.Id);
+                filesByAlbum.TryGetValue(album.Id, out var trackFiles);
+                trackFiles ??= new System.Collections.Generic.List<TrackFile>();
 
                 if (!tracksMissing && trackFiles.Any())
                 {
