@@ -268,9 +268,18 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
                 return new List<CandidateAlbumRelease>();
             }
 
-            var releaseRecordingIds = _trackService.GetTrackRecordingsByReleases(allReleases.Select(x => x.Id).Distinct().ToList())
-                .GroupBy(x => x.AlbumReleaseId)
-                .ToDictionary(x => x.Key, x => new HashSet<string>(x.Select(y => y.ForeignRecordingId)));
+            var releaseRecordingIds = new Dictionary<int, HashSet<string>>();
+
+            foreach (var trackRecording in _trackService.GetTrackRecordingsByReleases(allReleases.Select(x => x.Id).Distinct().ToList()))
+            {
+                if (!releaseRecordingIds.TryGetValue(trackRecording.AlbumReleaseId, out var recordingIdSet))
+                {
+                    recordingIdSet = new HashSet<string>();
+                    releaseRecordingIds.Add(trackRecording.AlbumReleaseId, recordingIdSet);
+                }
+
+                recordingIdSet.Add(trackRecording.ForeignRecordingId);
+            }
 
             return GetDbCandidatesByRelease(allReleases.Select(x =>
             {
