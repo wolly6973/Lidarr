@@ -57,12 +57,12 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
                 }
             }
 
-            foreach (var album in subject.Albums)
+            foreach (var albumId in albumIds)
             {
-                var tracksMissing = _missingFilesCache.Get(album.Id.ToString(),
-                                                           () => _trackService.TracksWithoutFiles(album.Id).Any(),
+                var tracksMissing = _missingFilesCache.Get(albumId.ToString(),
+                                                           () => _trackService.TracksWithoutFiles(albumId).Any(),
                                                            TimeSpan.FromSeconds(30));
-                filesByAlbum.TryGetValue(album.Id, out var trackFiles);
+                filesByAlbum.TryGetValue(albumId, out var trackFiles);
                 trackFiles ??= new System.Collections.Generic.List<TrackFile>();
 
                 if (!tracksMissing && trackFiles.Any())
