@@ -344,14 +344,16 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
 
             var albumImports = importResults.Where(e => e.ImportDecision.Item.Album != null)
                 .GroupBy(e => e.ImportDecision.Item.Album.Id).ToList();
+            var importedAlbumIds = albumImports.Select(group => group.Key).ToList();
+            var albumsById = _albumService.GetAlbums(importedAlbumIds).ToDictionary(album => album.Id);
 
             foreach (var albumImport in albumImports)
             {
                 var release = albumImport.First().ImportDecision.Item.Release;
-                var album = _albumService.GetAlbum(albumImport.First().ImportDecision.Item.Album.Id);
+                var album = albumsById.GetValueOrDefault(albumImport.Key);
                 var artist = albumImport.First().ImportDecision.Item.Artist;
 
-                if (albumImport.Where(e => e.Errors.Count == 0).ToList().Count > 0 && artist != null && album != null)
+                if (albumImport.Any(e => e.Errors.Count == 0) && artist != null && album != null)
                 {
                     _eventAggregator.PublishEvent(new AlbumImportedEvent(
                         artist,
