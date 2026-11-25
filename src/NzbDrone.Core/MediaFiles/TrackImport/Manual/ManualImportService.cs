@@ -88,9 +88,11 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Manual
 
         public List<ManualImportItem> GetMediaFiles(string path, string downloadId, Artist artist, FilterFilesType filter, bool replaceExistingFiles)
         {
+            TrackedDownload trackedDownload = null;
+
             if (downloadId.IsNotNullOrWhiteSpace())
             {
-                var trackedDownload = _trackedDownloadService.Find(downloadId);
+                trackedDownload = _trackedDownloadService.Find(downloadId);
 
                 if (trackedDownload == null)
                 {
@@ -146,10 +148,10 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Manual
                 };
             }
 
-            return ProcessFolder(path, downloadId, artist, filter, replaceExistingFiles);
+            return ProcessFolder(path, downloadId, trackedDownload, artist, filter, replaceExistingFiles);
         }
 
-        private List<ManualImportItem> ProcessFolder(string folder, string downloadId, Artist artist, FilterFilesType filter, bool replaceExistingFiles)
+        private List<ManualImportItem> ProcessFolder(string folder, string downloadId, TrackedDownload trackedDownload, Artist artist, FilterFilesType filter, bool replaceExistingFiles)
         {
             DownloadClientItem downloadClientItem = null;
             var directoryInfo = new DirectoryInfo(folder);
@@ -163,9 +165,8 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Manual
                 _logger.Warn(e, "Unable to find artist from title");
             }
 
-            if (downloadId.IsNotNullOrWhiteSpace())
+            if (trackedDownload != null)
             {
-                var trackedDownload = _trackedDownloadService.Find(downloadId);
                 downloadClientItem = trackedDownload.DownloadItem;
 
                 if (artist == null)
