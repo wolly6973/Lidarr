@@ -104,6 +104,69 @@ namespace NzbDrone.Core.Test.MediaFiles.TrackImport.Identification
         }
 
         [Test]
+        public void get_candidates_by_fingerprint_should_use_distinct_recording_ids_and_fractional_match_ratio()
+        {
+            var tracks = GivenTracks(3);
+            tracks[0].ForeignRecordingId = "recording-1";
+            tracks[1].ForeignRecordingId = "recording-2";
+            tracks[2].ForeignRecordingId = "recording-3";
+
+            var release = GivenAlbumRelease("album", tracks);
+            tracks.ForEach(x => x.AlbumReleaseId = release.Id);
+            var localTracks = GivenLocalTracks(tracks, release);
+            localTracks[0].AcoustIdResults = new List<string> { "recording-1", "recording-1" };
+            localTracks[1].AcoustIdResults = new List<string> { "recording-2" };
+            localTracks[2].AcoustIdResults = new List<string>();
+
+            var local = new LocalAlbumRelease(localTracks);
+
+            Mocker.GetMock<IReleaseService>()
+                .Setup(x => x.GetReleasesByRecordingIds(It.Is<List<string>>(ids => ids.SequenceEqual(new[] { "recording-1", "recording-2" }))))
+                .Returns(new List<AlbumRelease> { release });
+            Mocker.GetMock<ITrackService>()
+                .Setup(x => x.GetTrackRecordingsByReleases(It.Is<List<int>>(ids => ids.SequenceEqual(new[] { release.Id }))))
+                .Returns(tracks.Select(x => new TrackRecording { AlbumReleaseId = x.AlbumReleaseId, ForeignRecordingId = x.ForeignRecordingId }).ToList());
+
+            var result = Subject.GetDbCandidatesFromFingerprint(local, null, false);
+
+            result.Select(x => x.AlbumRelease.Id).Should().Equal(release.Id);
+            Mocker.GetMock<IReleaseService>()
+                .Verify(x => x.GetReleasesByRecordingIds(It.IsAny<List<string>>()), Times.Once);
+            Mocker.GetMock<ITrackService>()
+                .Verify(x => x.GetTrackRecordingsByReleases(It.IsAny<List<int>>()), Times.Once);
+        }
+
+        [Test]
+        public void get_candidates_by_fingerprint_should_skip_release_lookup_when_no_recording_ids_exist()
+        {
+            var local = GivenLocalAlbumRelease();
+            local.LocalTracks.ForEach(x => x.AcoustIdResults = null);
+
+            Subject.GetDbCandidatesFromFingerprint(local, null, false).Should().BeEmpty();
+
+            Mocker.GetMock<IReleaseService>()
+                .Verify(x => x.GetReleasesByRecordingIds(It.IsAny<List<string>>()), Times.Never);
+            Mocker.GetMock<ITrackService>()
+                .Verify(x => x.GetTrackRecordingsByReleases(It.IsAny<List<int>>()), Times.Never);
+        }
+
+        [Test]
+        public void get_candidates_by_fingerprint_should_skip_track_lookup_when_no_releases_are_found()
+        {
+            var localTracks = GivenLocalAlbumRelease().LocalTracks;
+            localTracks.ForEach(x => x.AcoustIdResults = new List<string> { "recording-1" });
+
+            Mocker.GetMock<IReleaseService>()
+                .Setup(x => x.GetReleasesByRecordingIds(It.IsAny<List<string>>()))
+                .Returns(new List<AlbumRelease>());
+
+            Subject.GetDbCandidatesFromFingerprint(new LocalAlbumRelease(localTracks), null, false).Should().BeEmpty();
+
+            Mocker.GetMock<ITrackService>()
+                .Verify(x => x.GetTrackRecordingsByReleases(It.IsAny<List<int>>()), Times.Never);
+        }
+
+        [Test]
         public void get_candidates_by_fingerprint_should_not_fail_if_fingerprint_lookup_returned_null()
         {
             Mocker.GetMock<IFingerprintingService>()
