@@ -360,6 +360,14 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Manual
         {
             _logger.ProgressTrace("Manually importing {0} files using mode {1}", message.Files.Count, message.ImportMode);
 
+            var artistsById = _artistService.GetArtists(message.Files.Select(x => x.ArtistId).Distinct()).ToDictionary(x => x.Id);
+            var albumsById = _albumService.GetAlbums(message.Files.Select(x => x.AlbumId).Distinct()).ToDictionary(x => x.Id);
+            var releasesById = _releaseService.GetReleases(message.Files.Select(x => x.AlbumReleaseId).Distinct()).ToDictionary(x => x.Id);
+            var tracksById = _trackService.GetTracks(message.Files
+                .Where(x => x.TrackIds != null)
+                .SelectMany(x => x.TrackIds)
+                .Distinct()).ToDictionary(x => x.Id);
+
             var imported = new List<ImportResult>();
             var importedTrackedDownload = new List<ManuallyImportedFile>();
             var albumIds = message.Files.GroupBy(e => e.AlbumId).ToList();
@@ -381,7 +389,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Manual
                 // turn off anyReleaseOk if specified
                 if (importAlbumId.First().DisableReleaseSwitching)
                 {
-                    var album = _albumService.GetAlbum(importAlbumId.First().AlbumId);
+                    var album = albumsById.GetValueOrDefault(importAlbumId.First().AlbumId);
                     album.AnyReleaseOk = false;
                     _albumService.UpdateAlbum(album);
                 }
@@ -390,10 +398,13 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Manual
                 {
                     _logger.ProgressTrace("Processing file {0} of {1}", fileCount + 1, message.Files.Count);
 
-                    var artist = _artistService.GetArtist(file.ArtistId);
-                    var album = _albumService.GetAlbum(file.AlbumId);
-                    var release = _releaseService.GetRelease(file.AlbumReleaseId);
-                    var tracks = _trackService.GetTracks(file.TrackIds);
+                    var artist = artistsById.GetValueOrDefault(file.ArtistId);
+                    var album = albumsById.GetValueOrDefault(file.AlbumId);
+                    var release = releasesById.GetValueOrDefault(file.AlbumReleaseId);
+                    var tracks = (file.TrackIds ?? new List<int>())
+                        .Where(tracksById.ContainsKey)
+                        .Select(id => tracksById[id])
+                        .ToList();
                     var fileTrackInfo = _audioTagService.ReadTags(file.Path) ?? new ParsedTrackInfo();
                     var fileInfo = _diskProvider.GetFileInfo(file.Path);
 
