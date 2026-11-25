@@ -150,7 +150,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
                 .Distinct(pathComparer)
                 .ToList();
             var existingFilesByPath = existingPaths.Any()
-                ? _mediaFileService.GetFileWithPath(existingPaths).ToDictionary(file => file.Path, pathComparer)
+                ? (_mediaFileService.GetFileWithPath(existingPaths) ?? new List<TrackFile>()).ToDictionary(file => file.Path, pathComparer)
                 : new Dictionary<string, TrackFile>(pathComparer);
 
             var grabHistory = downloadClientItem?.DownloadId.IsNotNullOrWhiteSpace() == true
