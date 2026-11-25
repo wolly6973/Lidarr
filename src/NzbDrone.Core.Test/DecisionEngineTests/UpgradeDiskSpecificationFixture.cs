@@ -54,7 +54,7 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
                 .Returns(new List<Track>());
 
             Mocker.GetMock<IMediaFileService>()
-                  .Setup(c => c.GetFilesByAlbum(It.IsAny<int>()))
+                  .Setup(c => c.GetFilesByAlbums(It.IsAny<List<int>>()))
                   .Returns(new List<TrackFile> { _firstFile, _secondFile });
 
             _parseResultMulti = new RemoteAlbum
@@ -89,10 +89,41 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
         }
 
         [Test]
+        public void should_load_existing_files_for_all_albums_in_one_batch()
+        {
+            Subject.IsSatisfiedBy(_parseResultMulti, null);
+
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(c => c.GetFilesByAlbums(It.Is<List<int>>(ids => ids.Count == 1)), Times.Once());
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(c => c.GetFilesByAlbum(It.IsAny<int>()), Times.Never());
+        }
+
+        [Test]
+        public void should_only_check_duplicate_album_ids_once()
+        {
+            Subject.IsSatisfiedBy(_parseResultMulti, null);
+
+            Mocker.GetMock<ICustomFormatCalculationService>()
+                .Verify(c => c.ParseCustomFormat(It.IsAny<TrackFile>()), Times.Once());
+        }
+
+        [Test]
+        public void should_not_query_existing_files_when_there_are_no_albums()
+        {
+            _parseResultSingle.Albums = new List<Album>();
+
+            Subject.IsSatisfiedBy(_parseResultSingle, null).Accepted.Should().BeTrue();
+
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(c => c.GetFilesByAlbums(It.IsAny<List<int>>()), Times.Never());
+        }
+
+        [Test]
         public void should_return_true_if_album_has_no_existing_file()
         {
             Mocker.GetMock<IMediaFileService>()
-                  .Setup(c => c.GetFilesByAlbum(It.IsAny<int>()))
+                  .Setup(c => c.GetFilesByAlbums(It.IsAny<List<int>>()))
                   .Returns(new List<TrackFile> { });
 
             Subject.IsSatisfiedBy(_parseResultSingle, null).Accepted.Should().BeTrue();
