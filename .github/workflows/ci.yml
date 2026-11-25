@@ -1,0 +1,127 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend build and unit tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/packages.lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Build backend and prepare test assemblies
+        run: ./build.sh --backend
+
+      # Lidarr's test.sh currently masks positive dotnet test exit codes.
+      # Validate its NUnit XML output explicitly so failed tests fail this job.
+      - name: Run backend unit tests
+        shell: bash
+        run: |
+          test_dir="$GITHUB_WORKSPACE/_tests/net10.0/linux-x64/publish"
+          test -d "$test_dir"
+          test -f "$test_dir/test.sh"
+          chmod +x "$test_dir/test.sh"
+          TEST_DIR="$test_dir" "$test_dir/test.sh" Linux Unit Test
+
+          python3 - <<'PY'
+          import glob
+          import sys
+          import xml.etree.ElementTree as ET
+
+          results = glob.glob("TestResult.xml") + glob.glob("**/TestResult.xml", recursive=True)
+          if not results:
+              sys.exit("NUnit TestResult.xml was not produced; treating the test run as failed.")
+
+          failed_total = 0
+          discovered_total = 0
+          for path in sorted(set(results)):
+              root = ET.parse(path).getroot()
+              failed = int(root.attrib.get("failed", "0"))
+              total = int(root.attrib.get("total", "0"))
+              failed_total += failed
+              discovered_total += total
+              print(f"{path}: total={total}, failed={failed}")
+
+          if discovered_total == 0:
+              sys.exit("No tests were reported by NUnit; treating the test run as failed.")
+          if failed_total:
+              sys.exit(f"{failed_total} NUnit test(s) failed.")
+          PY
+
+      - name: Upload backend test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-test-results
+          path: |
+            TestResult.xml
+            TestLog.txt
+          if-no-files-found: warn
+          retention-days: 7
+
+  frontend:
+    name: Frontend lint and production build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "20"
+          cache: yarn
+          cache-dependency-path: yarn.lock
+
+      - name: Enable pinned Yarn version
+        run: |
+          corepack enable
+          corepack prepare yarn@1.22.19 --activate
+          yarn --version
+
+      - name: Lint and build frontend
+        run: ./build.sh --frontend --lint
+
+      - name: Upload frontend build
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-build
+          path: _output/UI
+          if-no-files-found: error
+          retention-days: 7
