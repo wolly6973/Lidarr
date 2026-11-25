@@ -12,6 +12,7 @@ namespace NzbDrone.Core.MediaFiles
     {
         List<TrackFile> GetFilesByArtist(int artistId);
         List<TrackFile> GetFilesByAlbum(int albumId);
+        List<TrackFile> GetFilesByAlbums(List<int> albumIds);
         List<TrackFile> GetFilesByRelease(int releaseId);
         List<TrackFile> GetUnmappedFiles();
         List<TrackFile> GetFilesWithBasePath(string path);
@@ -83,6 +84,18 @@ namespace NzbDrone.Core.MediaFiles
             return Query(Builder().LeftJoin<Track, AlbumRelease>((t, r) => t.AlbumReleaseId == r.Id)
                          .Where<AlbumRelease>(r => r.Monitored == true)
                          .Where<TrackFile>(f => f.AlbumId == albumId));
+        }
+
+        public List<TrackFile> GetFilesByAlbums(List<int> albumIds)
+        {
+            if (albumIds == null || albumIds.Count == 0)
+            {
+                return new List<TrackFile>();
+            }
+
+            return Query(Builder().LeftJoin<Track, AlbumRelease>((t, r) => t.AlbumReleaseId == r.Id)
+                         .Where<AlbumRelease>(r => r.Monitored == true)
+                         .Where<TrackFile>(f => albumIds.Contains(f.AlbumId)));
         }
 
         public List<TrackFile> GetUnmappedFiles()
