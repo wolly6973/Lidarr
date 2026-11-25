@@ -72,13 +72,13 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
             return releases;
         }
 
-        private static bool HasCommonEntry(IEnumerable<string> values, double threshold, double fuzz)
+        private static bool HasCommonEntry(IEnumerable<string> values, double threshold, double fuzz, out string mostCommonEntry)
         {
             var groups = values.GroupBy(x => x).OrderByDescending(x => x.Count()).ToList();
             var distinctCount = groups.Count;
             var mostCommonGroup = groups[0];
             var mostCommonCount = mostCommonGroup.Count();
-            var mostCommonEntry = mostCommonGroup.Key;
+            mostCommonEntry = mostCommonGroup.Key;
             var totalCount = groups.Sum(x => x.Count());
 
             // merge groups that are close to the most common value
@@ -125,7 +125,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
 
             // check that there's a common album tag.
             var albumTags = tracks.Select(x => x.FileTrackInfo.AlbumTitle);
-            if (!HasCommonEntry(albumTags, albumTagThreshold, tagFuzz))
+            if (!HasCommonEntry(albumTags, albumTagThreshold, tagFuzz, out _))
             {
                 _logger.Trace("LooksLikeSingleRelease: No common album tag");
                 return false;
@@ -135,7 +135,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
             if (!IsVariousArtists(tracks))
             {
                 var artistTags = tracks.Select(x => x.FileTrackInfo.ArtistTitle);
-                if (!HasCommonEntry(artistTags, artistTagThreshold, tagFuzz))
+                if (!HasCommonEntry(artistTags, artistTagThreshold, tagFuzz, out _))
                 {
                     _logger.Trace("LooksLikeSingleRelease: No common artist tag");
                     return false;
