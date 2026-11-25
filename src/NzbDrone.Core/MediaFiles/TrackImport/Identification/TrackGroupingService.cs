@@ -178,9 +178,25 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
             // and group them.
 
             // we only bother doing this for the immediate parent directory.
-            var trackFolders = tracks.Select(x => Tuple.Create(x, Path.GetDirectoryName(x.Path))).ToList();
+            var pathComparer = DiskProviderBase.PathStringComparison == StringComparison.OrdinalIgnoreCase
+                ? StringComparer.OrdinalIgnoreCase
+                : StringComparer.Ordinal;
+            var tracksByFolder = new Dictionary<string, List<LocalTrack>>(pathComparer);
 
-            var distinctFolders = trackFolders.Select(x => x.Item2).Distinct().ToList();
+            foreach (var track in tracks)
+            {
+                var folder = Path.GetDirectoryName(track.Path);
+
+                if (!tracksByFolder.TryGetValue(folder, out var folderTracks))
+                {
+                    folderTracks = new List<LocalTrack>();
+                    tracksByFolder.Add(folder, folderTracks);
+                }
+
+                folderTracks.Add(track);
+            }
+
+            var distinctFolders = tracksByFolder.Keys.ToList();
             distinctFolders.Sort();
 
             _logger.Trace("Folders:\n{0}", string.Join("\n", distinctFolders));
@@ -194,7 +210,9 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
                     if (subdirRegex.IsMatch(folder))
                     {
                         // current folder continues match, so append output
-                        output.AddRange(tracks.Where(x => x.Path.StartsWith(folder)));
+                        output.AddRange(tracksByFolder
+                            .Where(x => x.Key.StartsWith(folder, DiskProviderBase.PathStringComparison))
+                            .SelectMany(x => x.Value));
                         continue;
                     }
                 }
@@ -211,9 +229,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
 
                 // reset and put current folder into output
                 subdirRegex = null;
-                var currentTracks = trackFolders.Where(x => x.Item2.Equals(folder, DiskProviderBase.PathStringComparison))
-                    .Select(x => x.Item1);
-                output.AddRange(currentTracks);
+                output.AddRange(tracksByFolder[folder]);
 
                 // check if the start of another multi disc match
                 foreach (var marker in MultiDiscMarkers)
