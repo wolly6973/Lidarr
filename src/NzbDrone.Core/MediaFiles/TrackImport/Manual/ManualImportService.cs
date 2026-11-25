@@ -360,12 +360,13 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Manual
         {
             _logger.ProgressTrace("Manually importing {0} files using mode {1}", message.Files.Count, message.ImportMode);
 
-            var artistsById = _artistService.GetArtists(message.Files.Select(x => x.ArtistId).Distinct()).ToDictionary(x => x.Id);
-            var albumsById = _albumService.GetAlbums(message.Files.Select(x => x.AlbumId).Distinct()).ToDictionary(x => x.Id);
-            var releasesById = _releaseService.GetReleases(message.Files.Select(x => x.AlbumReleaseId).Distinct()).ToDictionary(x => x.Id);
+            var artistsById = _artistService.GetArtists(message.Files.Select(x => x.ArtistId).Where(x => x > 0).Distinct()).ToDictionary(x => x.Id);
+            var albumsById = _albumService.GetAlbums(message.Files.Select(x => x.AlbumId).Where(x => x > 0).Distinct()).ToDictionary(x => x.Id);
+            var releasesById = _releaseService.GetReleases(message.Files.Select(x => x.AlbumReleaseId).Where(x => x > 0).Distinct()).ToDictionary(x => x.Id);
             var tracksById = _trackService.GetTracks(message.Files
                 .Where(x => x.TrackIds != null)
                 .SelectMany(x => x.TrackIds)
+                .Where(x => x > 0)
                 .Distinct()).ToDictionary(x => x.Id);
 
             // Root-folder membership is independent of the individual file, so resolve it once
