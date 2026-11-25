@@ -74,11 +74,12 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
 
         private static bool HasCommonEntry(IEnumerable<string> values, double threshold, double fuzz)
         {
-            var groups = values.GroupBy(x => x).OrderByDescending(x => x.Count());
-            var distinctCount = groups.Count();
-            var mostCommonCount = groups.First().Count();
-            var mostCommonEntry = groups.First().Key;
-            var totalCount = values.Count();
+            var groups = values.GroupBy(x => x).OrderByDescending(x => x.Count()).ToList();
+            var distinctCount = groups.Count;
+            var mostCommonGroup = groups[0];
+            var mostCommonCount = mostCommonGroup.Count();
+            var mostCommonEntry = mostCommonGroup.Key;
+            var totalCount = groups.Sum(x => x.Count());
 
             // merge groups that are close to the most common value
             foreach (var group in groups.Skip(1))
