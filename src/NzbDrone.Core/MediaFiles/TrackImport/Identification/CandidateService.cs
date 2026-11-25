@@ -24,6 +24,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
         private readonly IAlbumService _albumService;
         private readonly IReleaseService _releaseService;
         private readonly IMediaFileService _mediaFileService;
+        private readonly ITrackService _trackService;
         private readonly Logger _logger;
 
         public CandidateService(ISearchForNewAlbum albumSearchService,
@@ -31,6 +32,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
                                 IAlbumService albumService,
                                 IReleaseService releaseService,
                                 IMediaFileService mediaFileService,
+                                ITrackService trackService,
                                 Logger logger)
         {
             _albumSearchService = albumSearchService;
@@ -38,6 +40,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
             _albumService = albumService;
             _releaseService = releaseService;
             _mediaFileService = mediaFileService;
+            _trackService = trackService;
             _logger = logger;
         }
 
