@@ -122,15 +122,16 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
 
         private List<CandidateAlbumRelease> GetDbCandidatesByRelease(List<AlbumRelease> releases, bool includeExisting)
         {
-            // get the local tracks on disk for each album
-            var albumTracks = releases.Select(x => x.AlbumId)
-                .Distinct()
-                .ToDictionary(id => id, id => includeExisting ? _mediaFileService.GetFilesByAlbum(id) : new List<TrackFile>());
+            // Load existing files for all candidate albums in one query.
+            var albumIds = releases.Select(x => x.AlbumId).Distinct().ToList();
+            var albumTracks = includeExisting
+                ? _mediaFileService.GetFilesByAlbums(albumIds).GroupBy(x => x.AlbumId).ToDictionary(x => x.Key, x => x.ToList())
+                : new Dictionary<int, List<TrackFile>>();
 
             return releases.Select(x => new CandidateAlbumRelease
             {
                 AlbumRelease = x,
-                ExistingTracks = albumTracks[x.AlbumId]
+                ExistingTracks = includeExisting && albumTracks.TryGetValue(x.AlbumId, out var tracks) ? tracks : new List<TrackFile>()
             }).ToList();
         }
 
@@ -147,34 +148,61 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
         private List<CandidateAlbumRelease> GetDbCandidatesByArtist(LocalAlbumRelease localAlbumRelease, Artist artist, bool includeExisting)
         {
             _logger.Trace("Getting candidates for {0}", artist);
-            var candidateReleases = new List<CandidateAlbumRelease>();
+            var albumTag = GetAlbumTag(localAlbumRelease);
 
-            var albumTag = localAlbumRelease.LocalTracks.MostCommon(x => x.FileTrackInfo.AlbumTitle) ?? "";
-            if (albumTag.IsNotNullOrWhiteSpace())
+            if (albumTag.IsNullOrWhiteSpace())
             {
-                var possibleAlbums = _albumService.GetCandidates(artist.ArtistMetadataId, albumTag);
-                foreach (var album in possibleAlbums)
-                {
-                    candidateReleases.AddRange(GetDbCandidatesByAlbum(localAlbumRelease, album, includeExisting));
-                }
+                return new List<CandidateAlbumRelease>();
             }
 
-            return candidateReleases;
+            return GetDbCandidatesByAlbums(localAlbumRelease, _albumService.GetCandidates(artist.ArtistMetadataId, albumTag), includeExisting);
+        }
+
+        private string GetAlbumTag(LocalAlbumRelease localAlbumRelease)
+        {
+            return localAlbumRelease.LocalTracks.MostCommon(x => x.FileTrackInfo.AlbumTitle) ?? "";
+        }
+
+        private List<CandidateAlbumRelease> GetDbCandidatesByAlbums(LocalAlbumRelease localAlbumRelease, List<Album> possibleAlbums, bool includeExisting)
+        {
+            var albums = possibleAlbums.DistinctBy(x => x.Id).ToList();
+            var albumIds = albums.Select(x => x.Id).ToList();
+
+            if (albumIds.Count == 0)
+            {
+                return new List<CandidateAlbumRelease>();
+            }
+
+            var albumOrder = albumIds
+                .Select((id, index) => new { id, index })
+                .ToDictionary(x => x.id, x => x.index);
+
+            var releases = _releaseService.GetReleasesByAlbums(albumIds)
+                .OrderBy(x => albumOrder[x.AlbumId])
+                .ThenBy(x => Math.Abs(localAlbumRelease.TrackCount - x.TrackCount))
+                .ToList();
+
+            return GetDbCandidatesByRelease(releases, includeExisting);
         }
 
         private List<CandidateAlbumRelease> GetDbCandidates(LocalAlbumRelease localAlbumRelease, bool includeExisting)
         {
-            // most general version, nothing has been specified.
-            // get all plausible artists, then all plausible albums, then get releases for each of these.
-            var candidateReleases = new List<CandidateAlbumRelease>();
+            // Collect plausible albums first so releases and existing files can be loaded in batches.
+            var possibleAlbums = new List<Album>();
+            var albumTag = GetAlbumTag(localAlbumRelease);
 
-            // check if it looks like VA.
+            if (albumTag.IsNullOrWhiteSpace())
+            {
+                return new List<CandidateAlbumRelease>();
+            }
+
+            // Check if it looks like Various Artists.
             if (TrackGroupingService.IsVariousArtists(localAlbumRelease.LocalTracks))
             {
                 var va = _artistService.FindById(DistanceCalculator.VariousArtistIds[0]);
                 if (va != null)
                 {
-                    candidateReleases.AddRange(GetDbCandidatesByArtist(localAlbumRelease, va, includeExisting));
+                    possibleAlbums.AddRange(_albumService.GetCandidates(va.ArtistMetadataId, albumTag));
                 }
             }
 
@@ -184,11 +212,11 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
                 var possibleArtists = _artistService.GetCandidates(artistTag);
                 foreach (var artist in possibleArtists)
                 {
-                    candidateReleases.AddRange(GetDbCandidatesByArtist(localAlbumRelease, artist, includeExisting));
+                    possibleAlbums.AddRange(_albumService.GetCandidates(artist.ArtistMetadataId, albumTag));
                 }
             }
 
-            return candidateReleases;
+            return GetDbCandidatesByAlbums(localAlbumRelease, possibleAlbums, includeExisting);
         }
 
         public List<CandidateAlbumRelease> GetDbCandidatesFromFingerprint(LocalAlbumRelease localAlbumRelease, IdentificationOverrides idOverrides, bool includeExisting)
