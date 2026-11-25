@@ -345,7 +345,7 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
             var albumImports = importResults.Where(e => e.ImportDecision.Item.Album != null)
                 .GroupBy(e => e.ImportDecision.Item.Album.Id).ToList();
             var importedAlbumIds = albumImports.Select(group => group.Key).ToList();
-            var albumsById = _albumService.GetAlbums(importedAlbumIds).ToDictionary(album => album.Id);
+            var albumsById = (_albumService.GetAlbums(importedAlbumIds) ?? new List<Album>()).ToDictionary(album => album.Id);
 
             foreach (var albumImport in albumImports)
             {
