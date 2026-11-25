@@ -12,6 +12,7 @@ namespace NzbDrone.Core.Music
         List<Track> GetTracksByAlbum(int albumId);
         List<Track> GetTracksByRelease(int albumReleaseId);
         List<Track> GetTracksByReleases(List<int> albumReleaseIds);
+        List<TrackRecording> GetTrackRecordingsByReleases(List<int> albumReleaseIds);
         List<Track> GetTracksForRefresh(int albumReleaseId, List<string> foreignTrackIds);
         List<Track> GetTracksByFileId(int fileId);
         List<Track> GetTracksByFileId(IEnumerable<int> ids);
@@ -19,6 +20,12 @@ namespace NzbDrone.Core.Music
         List<Track> TracksWithoutFiles(int albumId);
         void SetFileId(List<Track> tracks);
         void DetachTrackFile(int trackFileId);
+    }
+
+    public class TrackRecording
+    {
+        public int AlbumReleaseId { get; set; }
+        public string ForeignRecordingId { get; set; }
     }
 
     public class TrackRepository : BasicRepository<Track>, ITrackRepository
@@ -63,6 +70,20 @@ namespace NzbDrone.Core.Music
                         track.ArtistMetadata = metadata;
                         return track;
                     }).ToList();
+        }
+
+        public List<TrackRecording> GetTrackRecordingsByReleases(List<int> albumReleaseIds)
+        {
+            if (albumReleaseIds == null || albumReleaseIds.Count == 0)
+            {
+                return new List<TrackRecording>();
+            }
+
+            var sql = Builder()
+                .Where<Track>(x => albumReleaseIds.Contains(x.AlbumReleaseId))
+                .AddTemplate($"SELECT \"AlbumReleaseId\", \"ForeignRecordingId\" FROM \"{_table}\" /**where**/");
+
+            return _database.Query<TrackRecording>(sql.RawSql, sql.Parameters).ToList();
         }
 
         public List<Track> GetTracksForRefresh(int albumReleaseId, List<string> foreignTrackIds)
