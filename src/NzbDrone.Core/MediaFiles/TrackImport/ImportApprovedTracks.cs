@@ -143,14 +143,15 @@ namespace NzbDrone.Core.MediaFiles.TrackImport
             _logger.ProgressInfo($"Importing {qualifiedImports.Count} tracks");
             _logger.Debug($"Importing {qualifiedImports.Count} files. replaceExisting: {replaceExisting}");
 
+            var pathComparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
             var existingPaths = qualifiedImports
                 .Where(decision => decision.Item.ExistingFile)
                 .Select(decision => decision.Item.Path.CleanFilePath())
-                .Distinct(PathEqualityComparer.Instance)
+                .Distinct(pathComparer)
                 .ToList();
             var existingFilesByPath = existingPaths.Any()
-                ? _mediaFileService.GetFileWithPath(existingPaths).ToDictionary(file => file.Path, PathEqualityComparer.Instance)
-                : new Dictionary<string, TrackFile>(PathEqualityComparer.Instance);
+                ? _mediaFileService.GetFileWithPath(existingPaths).ToDictionary(file => file.Path, pathComparer)
+                : new Dictionary<string, TrackFile>(pathComparer);
 
             var grabHistory = downloadClientItem?.DownloadId.IsNotNullOrWhiteSpace() == true
                 ? _historyService.FindByDownloadId(downloadClientItem.DownloadId)
