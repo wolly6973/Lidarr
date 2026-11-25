@@ -155,12 +155,12 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
 
             var artistTags = tracks.Select(x => x.FileTrackInfo.ArtistTitle).ToList();
 
-            if (!HasCommonEntry(artistTags, artistTagThreshold, tagFuzz))
+            if (!HasCommonEntry(artistTags, artistTagThreshold, tagFuzz, out var mostCommonArtistTag))
             {
                 return true;
             }
 
-            if (VariousArtistTitles.Contains(artistTags.GroupBy(x => x).OrderByDescending(x => x.Count()).First().Key, StringComparer.OrdinalIgnoreCase))
+            if (VariousArtistTitles.Contains(mostCommonArtistTag, StringComparer.OrdinalIgnoreCase))
             {
                 return true;
             }
