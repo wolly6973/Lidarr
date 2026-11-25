@@ -53,7 +53,9 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
             AlbumRelease tagMbidRelease = null;
             List<CandidateAlbumRelease> tagCandidate = null;
 
-            var releaseIds = localAlbumRelease.LocalTracks.Select(x => x.FileTrackInfo.ReleaseMBId).Distinct().ToList();
+            var releaseIds = idOverrides?.AlbumRelease == null
+                ? localAlbumRelease.LocalTracks.Select(x => x.FileTrackInfo.ReleaseMBId).Distinct().ToList()
+                : new List<string>();
             if (releaseIds.Count == 1 && releaseIds[0].IsNotNullOrWhiteSpace())
             {
                 _logger.Debug("Selecting release from consensus ForeignReleaseId [{0}]", releaseIds[0]);
@@ -188,8 +190,28 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
 
         public List<CandidateAlbumRelease> GetDbCandidatesFromFingerprint(LocalAlbumRelease localAlbumRelease, IdentificationOverrides idOverrides, bool includeExisting)
         {
-            var recordingIds = localAlbumRelease.LocalTracks.Where(x => x.AcoustIdResults != null).SelectMany(x => x.AcoustIdResults).ToList();
+            var recordingIds = new List<string>();
+            var recordingIdSet = new HashSet<string>();
+
+            foreach (var recordingId in localAlbumRelease.LocalTracks.Where(x => x.AcoustIdResults != null).SelectMany(x => x.AcoustIdResults))
+            {
+                if (recordingIdSet.Add(recordingId))
+                {
+                    recordingIds.Add(recordingId);
+                }
+            }
+
+            if (recordingIds.Count == 0)
+            {
+                return new List<CandidateAlbumRelease>();
+            }
+
             var allReleases = _releaseService.GetReleasesByRecordingIds(recordingIds);
+
+            if (allReleases.Count == 0)
+            {
+                return new List<CandidateAlbumRelease>();
+            }
 
             // make sure releases are consistent with those selected by the user
             if (idOverrides?.AlbumRelease != null)
@@ -202,17 +224,43 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
             }
             else if (idOverrides?.Artist != null)
             {
-                allReleases = allReleases.Where(x => x.Album.Value.ArtistMetadataId == idOverrides.Artist.ArtistMetadataId).ToList();
+                var artistAlbumIds = new HashSet<int>(_albumService.GetAlbums(allReleases.Select(x => x.AlbumId).Distinct())
+                    .Where(x => x.ArtistMetadataId == idOverrides.Artist.ArtistMetadataId)
+                    .Select(x => x.Id));
+
+                allReleases = allReleases.Where(x => artistAlbumIds.Contains(x.AlbumId)).ToList();
             }
 
-            return GetDbCandidatesByRelease(allReleases.Select(x => new
+            if (allReleases.Count == 0)
             {
-                Release = x,
-                TrackCount = x.TrackCount,
-                CommonProportion = x.Tracks.Value.Select(y => y.ForeignRecordingId).Intersect(recordingIds).Count() / localAlbumRelease.TrackCount
+                return new List<CandidateAlbumRelease>();
+            }
+
+            var releaseRecordingIds = new Dictionary<int, HashSet<string>>();
+
+            foreach (var trackRecording in _trackService.GetTrackRecordingsByReleases(allReleases.Select(x => x.Id).Distinct().ToList()))
+            {
+                if (!releaseRecordingIds.TryGetValue(trackRecording.AlbumReleaseId, out var releaseRecordingIdSet))
+                {
+                    releaseRecordingIdSet = new HashSet<string>();
+                    releaseRecordingIds.Add(trackRecording.AlbumReleaseId, releaseRecordingIdSet);
+                }
+
+                releaseRecordingIdSet.Add(trackRecording.ForeignRecordingId);
+            }
+
+            return GetDbCandidatesByRelease(allReleases.Select(x =>
+            {
+                releaseRecordingIds.TryGetValue(x.Id, out var trackRecordingIds);
+
+                return new
+                {
+                    Release = x,
+                    TrackCount = x.TrackCount,
+                    CommonProportion = trackRecordingIds == null ? 0 : (double)trackRecordingIds.Count(recordingIdSet.Contains) / localAlbumRelease.TrackCount
+                };
             })
                 .Where(x => x.CommonProportion > 0.6)
-                .ToList()
                 .OrderBy(x => Math.Abs(x.TrackCount - localAlbumRelease.TrackCount))
                 .ThenByDescending(x => x.CommonProportion)
                 .Select(x => x.Release)
