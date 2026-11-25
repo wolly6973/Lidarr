@@ -237,8 +237,8 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Manual
         public List<ManualImportItem> UpdateItems(List<ManualImportItem> items)
         {
             var replaceExistingFiles = items.All(x => x.ReplaceExistingFiles);
-            var groupedItems = items.Where(x => !x.AdditionalFile).GroupBy(x => x.Album?.Id);
-            _logger.Debug($"UpdateItems, {groupedItems.Count()} groups, replaceExisting {replaceExistingFiles}");
+            var groupedItems = items.Where(x => !x.AdditionalFile).GroupBy(x => x.Album?.Id).ToList();
+            _logger.Debug($"UpdateItems, {groupedItems.Count} groups, replaceExisting {replaceExistingFiles}");
 
             var result = new List<ManualImportItem>();
 
