@@ -23,6 +23,9 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
         private static readonly Logger _logger = NzbDroneLogger.GetLogger(typeof(TrackGroupingService));
 
         private static readonly List<string> MultiDiscMarkers = new() { @"dis[ck]", @"cd" };
+        private static readonly Regex[] MultiDiscStartRegexes = MultiDiscMarkers
+            .Select(marker => new Regex(MultiDiscPatternFormat.Replace("%s", marker), RegexOptions.IgnoreCase))
+            .ToArray();
         private static readonly List<string> VariousArtistTitles = new() { "", "various artists", "various", "va", "unknown" };
 
         public List<LocalAlbumRelease> GroupTracks(List<LocalTrack> localTracks)
@@ -248,12 +251,9 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
                 output.AddRange(tracksByFolder[folder]);
 
                 // check if the start of another multi disc match
-                foreach (var marker in MultiDiscMarkers)
+                foreach (var multiStartRegex in MultiDiscStartRegexes)
                 {
                     // check if this is the first of a multi-disc set of folders
-                    var pattern = MultiDiscPatternFormat.Replace("%s", marker);
-                    var multiStartRegex = new Regex(pattern, RegexOptions.IgnoreCase);
-
                     var match = multiStartRegex.Match(folder);
                     if (match.Success)
                     {
