@@ -116,11 +116,26 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
             const double tagFuzz = 0.9;
 
             // check that any Album/Release MBID is unique
-            if (tracks.Select(x => x.FileTrackInfo.AlbumMBId).Distinct().Count(x => x.IsNotNullOrWhiteSpace()) > 1 ||
-                tracks.Select(x => x.FileTrackInfo.ReleaseMBId).Distinct().Count(x => x.IsNotNullOrWhiteSpace()) > 1)
+            var albumMbids = new HashSet<string>();
+            var releaseMbids = new HashSet<string>();
+
+            foreach (var track in tracks)
             {
-                _logger.Trace("LooksLikeSingleRelease: MBIDs are not unique");
-                return false;
+                if (track.FileTrackInfo.AlbumMBId.IsNotNullOrWhiteSpace() &&
+                    albumMbids.Add(track.FileTrackInfo.AlbumMBId) &&
+                    albumMbids.Count > 1)
+                {
+                    _logger.Trace("LooksLikeSingleRelease: MBIDs are not unique");
+                    return false;
+                }
+
+                if (track.FileTrackInfo.ReleaseMBId.IsNotNullOrWhiteSpace() &&
+                    releaseMbids.Add(track.FileTrackInfo.ReleaseMBId) &&
+                    releaseMbids.Count > 1)
+                {
+                    _logger.Trace("LooksLikeSingleRelease: MBIDs are not unique");
+                    return false;
+                }
             }
 
             // check that there's a common album tag.
