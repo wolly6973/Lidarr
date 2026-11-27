@@ -310,7 +310,16 @@ namespace NzbDrone.Core.MediaFiles.TrackImport.Identification
             var candidates = new List<CandidateAlbumRelease>();
 
             var albumIds = localAlbumRelease.LocalTracks.Select(x => x.FileTrackInfo.AlbumMBId).Distinct().ToList();
-            var recordingIds = localAlbumRelease.LocalTracks.Where(x => x.AcoustIdResults != null).SelectMany(x => x.AcoustIdResults).Distinct().ToList();
+            var recordingIds = new List<string>();
+            var recordingIdSet = new HashSet<string>();
+
+            foreach (var recordingId in localAlbumRelease.LocalTracks.Where(x => x.AcoustIdResults != null).SelectMany(x => x.AcoustIdResults))
+            {
+                if (recordingIdSet.Add(recordingId))
+                {
+                    recordingIds.Add(recordingId);
+                }
+            }
 
             try
             {
